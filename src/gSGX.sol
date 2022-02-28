@@ -25,26 +25,37 @@ contract gSGX is ERC20, Ownable {
     /// @param share uint256, the total gSGX shares that were burned.
     event Withdraw(address indexed user, uint256 amount, uint256 share);
 
-    /// @notice
-    /// @param newPenalty uint256, 
+    /// @notice Emitted when the penalty value is updated.
+    /// @param newPenalty uint256, the new penalty value.
     event penaltySet(uint256 newPenalty);
+
+    /// @notice Emitted when the withdraw ceil is updated.
+    /// @param _ceil uint256, the new withdraw ceil value.
+    event withdrawCeilSet(uint256 _ceil);
 
     /*///////////////////////////////////////////////////////////////
                             GLOBAL VARIABLES
     //////////////////////////////////////////////////////////////*/
     
+    /// @notice Subgenix Network offical token.
     IERC20 public immutable SGX;
+
+    /// @notice The penalty for withdrawing early.
     uint256 public penalty;
 
+    /// @notice The withdraw ceiling, manually updated by devs.
+    uint256 public withdrawCeil;
+
+    /// @notice The max penalty for withdrawing, 25%.
     uint256 public constant MAX_PENALTY = 2500;
-    uint256 public constant MAX_BIPS = 10000;
+
+    /// @notice The base multiplier.
+    uint256 public constant BASE_VALUE = 10000;
 
     constructor(
-        address _sgx,
-        uint256 _penalty
+        address _sgx
     ) ERC20("Governance SGX", "gSGX", 18) {
         SGX = IERC20(_sgx);
-        setPenalty(_penalty);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -80,6 +91,7 @@ contract gSGX is ERC20, Ownable {
     /// @notice Unlocks the staked + gained SGX and burns gSGX.
     /// @param _share uint256, the amount of gSGX that will be burned from user.
     function withdraw(uint256 _share) external {
+
         // Gets the amount of SGX locked in the contract
         uint256 totalSGX = sgxBalance();
 
@@ -88,11 +100,16 @@ contract gSGX is ERC20, Ownable {
 
         // Calculate the amount of gSGX the SGX is worth.
         uint256 amount = (_share * totalSGX) / totalShares;
+
+        // Check with withdraw ceiling wasn't hit yet.
+        require(withdrawCeil >= amount, "Amount hitting withdraw ceil.");
+
+        withdrawCeil -= amount;
         
         // burn gSGX
         _burn(msg.sender, _share);
 
-        uint256 fee = (amount * penalty) / MAX_BIPS;
+        uint256 fee = (amount * penalty) / BASE_VALUE;
         uint256 finalAmount = amount - fee;
 
         // Transfer user's SGX.
@@ -101,17 +118,25 @@ contract gSGX is ERC20, Ownable {
         emit Withdraw(msg.sender, finalAmount, _share);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                            PUBLIC FUNCTIONS 
-    ///////////////////////////////////////////////////////////////*/
-
     /// @notice Change the early withdraw penalty value
     /// @param _penalty uint256, new penalty for early withdraw.
-    function setPenalty(uint256 _penalty) public onlyOwner {
+    function setPenalty(uint256 _penalty) external onlyOwner {
         require(_penalty <= MAX_PENALTY, "penalty is too high.");
         penalty = _penalty;
         emit penaltySet(_penalty);
     }
+
+    /// @notice Updates the withdraw ceil value.
+    /// @param _ceil uint256, the new withdraw ciel.
+    function setWithdrawCeil(uint256 _ceil) external onlyOwner {
+        withdrawCeil = _ceil;
+        emit withdrawCeilSet(_ceil);
+    }
+
+
+    /*///////////////////////////////////////////////////////////////
+                            VIEW FUNCTIONS 
+    ///////////////////////////////////////////////////////////////*/
 
     /// @notice Get the balance of SGX locked in this contract.
     /// @return The balance of SGX locked in this contract.

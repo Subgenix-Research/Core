@@ -34,6 +34,7 @@ contract VaultFactoryTest is DSTest {
         vault.setRewardPercent(1e16);      // Daily rewards, 1e16 = 1%
         vault.setBurnPercent(200);         // Percentage burned when claiming rewards, 200 = 2%.
         vault.setMinVaultDeposit(1e18);    // Minimum amount required to deposite in Vault.
+        vault.setNetworkBoost(1);          // SGX booster.
 
         SGX.setManager(address(vault), true);
     }

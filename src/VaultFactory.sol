@@ -86,6 +86,10 @@ contract VaultFactory is Ownable {
     /// @notice Emitted when the minimum deposit required is updated.
     /// @param minDeposit uint256, the new minimum deposit.
     event minVaultDepositUpdated(uint256 minDeposit);
+
+    /// @notice Emitted when the network boost is updated.
+    /// @param newBoost uint8, the new network boost.
+    event networkBoostUpdated(uint8 newBoost);
     
     /// @notice The minimum amount to deposit in the vault.
     uint256 public minVaultDeposit;
@@ -93,7 +97,12 @@ contract VaultFactory is Ownable {
     /// @notice Percentage burned when claiming rewards.
     uint256 public burnPercent;
 
-    /// @notice Function used to update the burn percentage.
+    /// @notice Used to boost users SGX. 
+    /// @dev Multiplies users SGX (amount * networkBoost) when
+    ///      depositing/creating a vault.
+    uint8 public networkBoost;
+
+    /// @notice Function used by the owner to update the burn percentage.
     /// @param percentage uint256, the new burn percentage.
     function setBurnPercent(uint256 percentage) external onlyOwner {
         burnPercent = percentage;
@@ -106,6 +115,14 @@ contract VaultFactory is Ownable {
     function setMinVaultDeposit(uint256 minDeposit) external onlyOwner {
         minVaultDeposit = minDeposit;
         emit minVaultDepositUpdated(minDeposit);
+    }
+
+    /// @notice Function used by the owner to update the network boost.
+    /// @param boost uint8, the new network boost.
+    function setNetworkBoost(uint8 boost) external onlyOwner {
+        require(boost >= 1, "Network Boost can't be < 1.");
+        networkBoost = boost;
+        emit networkBoostUpdated(boost);
     }
     
     /*///////////////////////////////////////////////////////////////
@@ -120,13 +137,15 @@ contract VaultFactory is Ownable {
         SGX.transferFrom(msg.sender, address(this), amount);
         SGX.approve(Treasury, amount);
         SGX.transfer(Treasury, amount);
+
+        uint256 amountBoosted = amount * networkBoost;
         
         UsersVault[msg.sender] = Vault({
             exists: true,
             lastClaimTime: uint32(block.timestamp),
             vesting: baseTime,
-            claimableRewards: payoutFor(amount),
-            balance: amount
+            claimableRewards: payoutFor(amountBoosted),
+            balance: amountBoosted
         });
 
         totalVaultsCreated += 1;
@@ -143,6 +162,8 @@ contract VaultFactory is Ownable {
         SGX.transferFrom(user, address(this), amount);
         SGX.approve(Treasury, amount);
         SGX.transfer(Treasury, amount);
+
+        uint256 amountBoosted = amount * networkBoost;
 
         // Claim current rewards and reset lastClaimTime         
         if (percentVestedFor(user) >= reward_granularity) { 
@@ -166,10 +187,10 @@ contract VaultFactory is Ownable {
         }
         
         // Add amount to users vault & update claimable rewards
-        UsersVault[user].balance += amount;
-        UsersVault[user].claimableRewards += payoutFor(amount);
+        UsersVault[user].balance += amountBoosted;
+        UsersVault[user].claimableRewards += payoutFor(amountBoosted);
 
-        emit SuccessfullyDeposited(msg.sender, amount); 
+        emit SuccessfullyDeposited(msg.sender, amountBoosted); 
     }
     
     /*///////////////////////////////////////////////////////////////
