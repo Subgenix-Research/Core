@@ -6,12 +6,14 @@ import {Subgenix} from "../Subgenix.sol";
 import {VaultFactory} from "../VaultFactory.sol";
 import {LockUpHell} from "../lockupHell.sol";
 import {Hevm} from "./utils/Hevm.sol";
+import {gSGX} from "../gSGX.sol";
 
 contract LockUpHellTest is DSTest {
     Hevm hevm = Hevm(HEVM_ADDRESS);
     VaultFactory vault;
     LockUpHell lockup;
     Subgenix SGX;
+    gSGX gsgx;
     address Treasury = address(0xBEEF);
 
     uint256 shortRewards = 1e18;
@@ -28,10 +30,12 @@ contract LockUpHellTest is DSTest {
     
     function setUp() public {
         SGX = new Subgenix("Subgenix Currency", "SGX", 18);
+        gsgx = new gSGX(address(SGX));
         lockup = new LockUpHell(address(SGX));
         
         vault = new VaultFactory(
             address(SGX),      // Underlying token.
+            address(gsgx),     // Governance token.
             Treasury,          // Treasury address.
             address(lockup)    // Lockup contract.
         );
@@ -43,6 +47,8 @@ contract LockUpHellTest is DSTest {
 
         vault.setRewardPercent(1e16);      // Daily rewards, 1e16 = 1%
         vault.setBurnPercent(200);         // Percentage burned when claiming rewards, 200 = 2%.
+        vault.setgSGXPercent(1300);        // Percentage of rewards converted to gSGX
+        vault.setgSGXDistributed(500);     // Percentage of rewards sent to the gSGX contract.
         vault.setMinVaultDeposit(1e18);    // Minimum amount required to deposite in Vault.
 
     }

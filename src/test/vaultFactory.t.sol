@@ -7,6 +7,7 @@ import {ERC20User} from "./utils/users/ERC20User.sol";
 import {VaultFactory} from "../VaultFactory.sol";
 import {LockUpHell} from "../lockupHell.sol";
 import {Hevm} from "./utils/Hevm.sol";
+import {gSGX} from "../gSGX.sol";
 
 
 contract VaultFactoryTest is DSTest {
@@ -14,14 +15,19 @@ contract VaultFactoryTest is DSTest {
     VaultFactory vault;
     LockUpHell lockup;
     Subgenix SGX;
+    gSGX GSGX;
     address Treasury = address(0xBEEF);
 
     function setUp() public {
         SGX = new Subgenix("Subgenix Currency", "SGX", 18);
+        
         lockup = new LockUpHell(address(SGX));
+        
+        GSGX = new gSGX(address(SGX));
         
         vault = new VaultFactory(
             address(SGX),      // Underlying token.
+            address(GSGX),     // Governance token
             Treasury,          // Treasury address.
             address(lockup)    // Lockup contract.
         );
@@ -33,6 +39,8 @@ contract VaultFactoryTest is DSTest {
 
         vault.setRewardPercent(1e16);      // Daily rewards, 1e16 = 1%
         vault.setBurnPercent(200);         // Percentage burned when claiming rewards, 200 = 2%.
+        vault.setgSGXPercent(1300);        // Percentage of rewards converted to gSGX
+        vault.setgSGXDistributed(500);     // Percentage of rewards sent to the gSGX contract.
         vault.setMinVaultDeposit(1e18);    // Minimum amount required to deposite in Vault.
         vault.setNetworkBoost(1);          // SGX booster.
 
@@ -156,10 +164,14 @@ contract VaultFactoryTest is DSTest {
         uint256 burnAmount = vault.calculatePercentage(reward, vault.getBurnPercentage()); 
         uint256 lockup7    = vault.calculatePercentage(reward, lockup.getShortPercentage()); 
         uint256 lockup18   = vault.calculatePercentage(reward, lockup.getLongPercentage()); 
+        uint256 gSGXDistributed = vault.calculatePercentage(reward, vault.getGSGXDistributed());
+        uint256 gSGXPercentage = vault.calculatePercentage(reward, vault.getGSGXPercent());
         
         reward -= burnAmount;
         reward -= lockup7;
         reward -= lockup18;
+        reward -= gSGXDistributed;
+        reward -= gSGXPercentage;
 
         uint256 result = (amount - deposit) + reward;
         
@@ -196,19 +208,4 @@ contract VaultFactoryTest is DSTest {
     /*///////////////////////////////////////////////////////////////
                               FUZZ-TESTING
     //////////////////////////////////////////////////////////////*/
-    function testMetaData(
-        address mockToken,
-        address mockTreasury,
-        address mockLockup
-    ) public { 
-
-        VaultFactory mockVault = new VaultFactory(
-            mockToken,
-            mockTreasury,
-            mockLockup
-        );
-
-        assertEq(address(mockVault.SGX()), mockToken); 
-        assertEq(mockVault.Treasury(), mockTreasury); 
-    }
 }

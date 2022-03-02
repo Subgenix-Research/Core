@@ -4,6 +4,7 @@ pragma solidity >=0.8.0 < 0.9.0;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ILockupHell} from "./interfaces/ILockupHell.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
+import {IgSGX} from "./interfaces/IgSGX.sol";
 
 /// @title Subgenix Vault Factory.
 /// @author Subgenix Research.
@@ -26,16 +27,19 @@ contract VaultFactory is Ownable {
     
     // Metadata
     IERC20 public immutable SGX;        // Token given as payment for Vault.
+    IgSGX public immutable gSGX;        // Governance token.
     address public immutable Treasury;  // Subgenix Treasury.
-    address public immutable Lockup;    // LockUpHell contract
+    address public immutable Lockup;    // LockUpHell contract.
 
     uint256 public totalVaultsCreated = 0;
     constructor(
         address _SGX,
+        address _gSGX,
         address _treasury,
         address _lockup
     ) {
         SGX = IERC20(_SGX);
+        gSGX = IgSGX(_gSGX);
         Treasury = _treasury;
         Lockup = _lockup;
     }
@@ -97,6 +101,12 @@ contract VaultFactory is Ownable {
     /// @notice Percentage burned when claiming rewards.
     uint256 public burnPercent;
 
+    /// @notice Percentage of the reward converted to gSGX.
+    uint256 public gSGXPercent;
+
+    /// @notice Percentage of the reward sent to the gSGX contract.
+    uint256 public gSGXDistributed;
+
     /// @notice Used to boost users SGX. 
     /// @dev Multiplies users SGX (amount * networkBoost) when
     ///      depositing/creating a vault.
@@ -123,6 +133,21 @@ contract VaultFactory is Ownable {
         require(boost >= 1, "Network Boost can't be < 1.");
         networkBoost = boost;
         emit networkBoostUpdated(boost);
+    }
+
+    /// @notice Function used by the owner to update the percentage of
+    ///         gSGX converted when claiming rewards.
+    /// @param percentage uint256, the new percentage.
+    function setgSGXPercent(uint256 percentage) external onlyOwner {
+        gSGXPercent = percentage;
+    }
+
+    /// @notice Function used by the owner to update the percentage of
+    ///         the rewards that will be converted to gSGX and sent to the
+    ///         gSGX contract.
+    /// @param percentage uint256, the new percentage.
+    function setgSGXDistributed(uint256 percentage) external onlyOwner {
+        gSGXDistributed = percentage;
     }
     
     /*///////////////////////////////////////////////////////////////
@@ -222,17 +247,30 @@ contract VaultFactory is Ownable {
         require(msg.sender == user, "You can only distribute your own rewards.");
         SGX.mint(address(this), claimableRewards);
 
-        (uint256 burnAmount, uint256 shortLockup, uint256 longLockup) = updateDistribution(claimableRewards); 
+        (uint256 burnAmount, 
+         uint256 shortLockup, 
+         uint256 longLockup,
+         uint256 gSGXPercentage,
+         uint256 gSGXPercentageDistribtued) = updateDistribution(claimableRewards); 
         
         claimableRewards -= burnAmount;
 
+        claimableRewards -= gSGXPercentage;
+
+        claimableRewards -= gSGXPercentageDistribtued;
+
         SGX.burn(address(this), burnAmount); // Burn token
+
+        // 13% Convert to gSGX and send to ser.
+        SGX.approve(address(gSGX), gSGXPercentage);
+        gSGX.deposit(gSGXPercentage);
+
+        // 05% sent to gSGX Contract
+        SGX.transfer(address(gSGX), gSGXPercentageDistribtued);
 
         SGX.transfer(msg.sender, claimableRewards); // Transfer token to users.
         
         ILockupHell(Lockup).lockupRewards(msg.sender, shortLockup, longLockup); // Lockup tokens
-
-        // Require a successfull lockup
     }
     
 
@@ -243,12 +281,15 @@ contract VaultFactory is Ownable {
     function updateDistribution(uint256 rewards) internal view returns (
     uint256 burnAmount, 
     uint256 shortLockup, 
-    uint256 longLockup
+    uint256 longLockup,
+    uint256 gSGXPercentage,
+    uint256 gSGXPercentageDistribtued
     ) {
-        // Burned amount
         burnAmount = calculatePercentage(rewards, burnPercent);
         shortLockup = calculatePercentage(rewards, ILockupHell(Lockup).getShortPercentage());
         longLockup = calculatePercentage(rewards, ILockupHell(Lockup).getLongPercentage());
+        gSGXPercentage = calculatePercentage(rewards, gSGXPercent);
+        gSGXPercentageDistribtued = calculatePercentage(rewards, gSGXDistributed);
     } 
 
     /// @notice Updates the amount that is being burned when claiming rewards
@@ -334,6 +375,13 @@ contract VaultFactory is Ownable {
 
     function getBurnPercentage() external view returns (uint256) {
         return burnPercent;
+    }
+
+    function getGSGXDistributed() external view returns (uint256) {
+        return gSGXDistributed;
+    }
+    function getGSGXPercent() external view returns (uint256) {
+        return gSGXPercent;
     }
 
     function vaultExists(address user) external view returns(bool) {
