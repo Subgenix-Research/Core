@@ -1,5 +1,7 @@
 const hre = require("hardhat");
 
+var colors = require("colors");
+
 async function main() {
 
     const treasury = "0x11C0402CA8326a118A28abA79E8ddBCC69b3C910";
@@ -18,21 +20,21 @@ async function main() {
     );
     await SGX.deployed();
 
-    console.log("1. SGX deployed to:", SGX.address);
+    console.log("✓".green + " SGX deployed to:", SGX.address);
 
 
     const LockUpHell = await ethers.getContractFactory("LockUpHell");
     const lockup = await LockUpHell.deploy(SGX.address);
     await lockup.deployed();
     
-    console.log("2. lockupHell deployed to:", lockup.address);
+    console.log("✓".green + " lockupHell deployed to:", lockup.address);
 
 
     const GovernanceSGX = await ethers.getContractFactory("gSGX");
     const gSGX = await GovernanceSGX.deploy(SGX.address);
     await gSGX.deployed();
     
-    console.log("3. gSGX deployed to:", gSGX.address);
+    console.log("✓".green + " gSGX deployed to:", gSGX.address);
 
     
     const VaultFactory = await ethers.getContractFactory("VaultFactory");
@@ -44,14 +46,14 @@ async function main() {
     );
     await vault.deployed();
     
-    console.log("4. VaultFactory deployed to:", gSGX.address);
+    console.log("✓".green + " VaultFactory deployed to:", gSGX.address);
 
 
     const Zapper = await ethers.getContractFactory("Zapper");
     const zapper = await Zapper.deploy(SGX.address, vault.address);
     await zapper.deployed();
     
-    console.log("5. Zapper deployed to:", zapper.address);
+    console.log("✓".green + " Zapper deployed to:", zapper.address);
 
     // SETTING UP CONTRACTS
 
@@ -76,7 +78,7 @@ async function main() {
     await SGX.setManager(owner.address, true);
     await SGX.mint(owner.address, ethers.utils.parseEther("100"));
 
-    console.log("All done!");
+    console.log("All done!".green);
 }
 
 main()
