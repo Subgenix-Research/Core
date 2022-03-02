@@ -1,2 +1,2 @@
-@solmate/=lib/solmate/
+@rari-capital/solmate/=lib/solmate/
 @openzeppelin/=lib/openzeppelin-contracts/

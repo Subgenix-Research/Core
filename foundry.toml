@@ -1,8 +1,8 @@
 [default]
 optimizer = true
-src = 'src'
-out = 'out'
-test = 'test'
+src = 'contracts'
+out = 'abis'
+test = 'tests'
 libs = ['lib']
 #remappings = ['ds-test/=lib/ds-test/src/']
 
