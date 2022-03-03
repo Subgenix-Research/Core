@@ -62,9 +62,7 @@ contract VaultFactoryTest is DSTest {
         ERC20User user = new ERC20User(SGX);
         uint256 amount = 200e18;
         bool created; 
-        uint32 lastClaimTime;
-        uint32 vesting;
-        uint256 rewards; 
+        uint256 lastClaimTime;
         uint256 balance;
         
         assertEq(vault.totalVaultsCreated(), 0);
@@ -81,7 +79,7 @@ contract VaultFactoryTest is DSTest {
         hevm.startPrank(address(user));
         vault.createVault(amount);
 
-        (created, lastClaimTime, vesting, rewards, balance) = vault.getVaultInfo();
+        (created, lastClaimTime, balance) = vault.getVaultInfo();
 
         assertEq(vault.totalVaultsCreated(), 1);
         assertEq(SGX.balanceOf(Treasury), amount);
@@ -110,14 +108,13 @@ contract VaultFactoryTest is DSTest {
         // 3. Impersonate user
         vault.createVault(deposit);
         
-        ( , , , , balance) = vault.getVaultInfo();
+        ( , , balance) = vault.getVaultInfo();
 
         uint256 currentBalance = balanceBefore - deposit;
 
+        vault.depositInVault(deposit); 
         
-        vault.depositInVault(msg.sender, deposit); 
-        
-        ( , , , , balance2) = vault.getVaultInfo();
+        ( , , balance2) = vault.getVaultInfo();
 
         uint256 currentBalance2 = currentBalance - deposit;
 
@@ -136,7 +133,7 @@ contract VaultFactoryTest is DSTest {
         uint256 lastClaimTime;
 
 
-        emit log_named_address("Sender: ", msg.sender);
+        //emit log_named_address("Sender: ", msg.sender);
         // 1. Mint token to account.
         SGX.mint(msg.sender, amount);
         uint256 balanceBefore = SGX.balanceOf(msg.sender);
@@ -150,7 +147,7 @@ contract VaultFactoryTest is DSTest {
         vault.createVault(deposit);
 
         hevm.prank(msg.sender);
-        ( , , , , balance) = vault.getVaultInfo();
+        ( , , balance) = vault.getVaultInfo();
 
         uint256 userSGXBalance = amount - deposit;
         
@@ -177,10 +174,10 @@ contract VaultFactoryTest is DSTest {
         
         // Approve
         hevm.prank(msg.sender);
-        SGX.approve(address(lockup), (lockup7 + lockup18));
-        
+        SGX.approve(address(lockup), type(uint256).max);
+
         hevm.prank(msg.sender);
-        vault.claimRewards(address(msg.sender));
+        vault.claimRewards();
          
         hevm.prank(msg.sender);
         assertEq(SGX.balanceOf(msg.sender), result);

@@ -17,10 +17,8 @@ contract VaultFactory is Ownable {
     // Info for Vault owner
     struct Vault {
         bool exists;
-        uint32 lastClaimTime;     // Last claim.
-        uint32 vesting;           // Seconds left to vest.
-        uint256 claimableRewards; // SGX remaining to be paid.
-        uint256 balance;          // Total Deposited in the vault. 
+        uint256 lastClaimTime; // Last claim.
+        uint256 balance;      // Total Deposited in the vault. 
     }
     
     mapping(address => Vault) public UsersVault;
@@ -63,7 +61,7 @@ contract VaultFactory is Ownable {
     // and distributed really small amount of rewards with high
     // precision. 
     
-    /// @notice reward Percentage (per `baseTime`) i.e. 1e17 = 10%/`baseTime`
+    /// @notice reward Percentage (per `baseTime`) i.e. 1e17 = 10% / `baseTime`
     uint256 public rewardPercent;
 
     /// @notice the level of reward granularity 
@@ -151,69 +149,46 @@ contract VaultFactory is Ownable {
     }
     
     /*///////////////////////////////////////////////////////////////
-                         EXTERNAL FUNCTIONS 
+                        VAULTS FUNCTIONALITY
     //////////////////////////////////////////////////////////////*/
 
     function createVault(uint256 amount) external returns(bool) {
         require(UsersVault[msg.sender].exists == false, "User already has a Vault.");
         require(amount >= minVaultDeposit, "Amount is too small.");
-        require(SGX.balanceOf(msg.sender) >= amount, "Not enough token in wallet.");
-
-        SGX.transferFrom(msg.sender, address(this), amount);
-        SGX.approve(Treasury, amount);
-        SGX.transfer(Treasury, amount);
 
         uint256 amountBoosted = amount * networkBoost;
         
         UsersVault[msg.sender] = Vault({
             exists: true,
-            lastClaimTime: uint32(block.timestamp),
-            vesting: baseTime,
-            claimableRewards: payoutFor(amountBoosted),
+            lastClaimTime: block.timestamp,
             balance: amountBoosted
         });
 
         totalVaultsCreated += 1;
+
+        SGX.transferFrom(msg.sender, address(this), amount);
+        SGX.approve(Treasury, amount);
+        SGX.transfer(Treasury, amount);
+
         emit VaultCreated(msg.sender);
         return true;
     }
 
-    function depositInVault(address user, uint256 amount) external {
-        require(msg.sender == user, "You can only deposit in your own vault.");
+    function depositInVault(uint256 amount) external {
         require(amount >= minVaultDeposit, "Amount is too small.");
-        require(SGX.balanceOf(user) >= amount, "Not enough token in wallet.");
-        
-        // User needs to approve this contract to spend `token`.
-        SGX.transferFrom(user, address(this), amount);
-        SGX.approve(Treasury, amount);
-        SGX.transfer(Treasury, amount);
 
         uint256 amountBoosted = amount * networkBoost;
 
         // Claim current rewards and reset lastClaimTime         
-        if (percentVestedFor(user) >= reward_granularity) { 
-            // Fully Vested
-            claimRewards(user);
-        } else { // Not fully vested
-            // Calculate amount of SGX available for claim by user.
-            uint256 claimableRewards = pendingRewardsFor(user);
-            if (claimableRewards != 0) {
-                Vault memory userVault = UsersVault[user];
-                
-                distributeRewards(claimableRewards, user);
-
-                // Update user's vault info
-                userVault.lastClaimTime = uint32(block.timestamp);
-                userVault.vesting -= uint32(block.timestamp) - uint32(userVault.lastClaimTime);
-                userVault.claimableRewards -= claimableRewards;
-
-                UsersVault[user] = userVault; 
-            }
-        }
+        claimRewards();
         
         // Add amount to users vault & update claimable rewards
-        UsersVault[user].balance += amountBoosted;
-        UsersVault[user].claimableRewards += payoutFor(amountBoosted);
+        UsersVault[msg.sender].balance += amountBoosted;
+
+        // User needs to approve this contract to spend `token`.
+        SGX.transferFrom(msg.sender, address(this), amount);
+        SGX.approve(Treasury, amount);
+        SGX.transfer(Treasury, amount);
 
         emit SuccessfullyDeposited(msg.sender, amountBoosted); 
     }
@@ -222,21 +197,19 @@ contract VaultFactory is Ownable {
                          PUBLIC FUNCTIONS 
     //////////////////////////////////////////////////////////////*/
 
-    function claimRewards(address user) public {
-        require(msg.sender == user, "You can only claim your own rewards.");
-        require(percentVestedFor(msg.sender) >= reward_granularity, "Too early to claim rewards.");
-        
+    function claimRewards() public {
         Vault memory userVault = UsersVault[msg.sender];
-        // Pay user everything due
-        uint256 claimableRewards = userVault.claimableRewards;
 
-        distributeRewards(claimableRewards, user);
+        uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
-        // Reset vesting period & User info.
-        userVault.lastClaimTime = uint32(block.timestamp);
-        userVault.vesting = baseTime;
-        userVault.claimableRewards = 0;
+        uint256 rewardsPercent = (timeElapsed * rewardPercent) / baseTime;
 
+        uint256 interest = (userVault.balance * rewardsPercent) / reward_granularity;
+
+        distributeRewards(interest, msg.sender);
+
+        // Update user's vault info
+        userVault.lastClaimTime = block.timestamp;
         UsersVault[msg.sender] = userVault;
     }
     
@@ -311,44 +284,11 @@ contract VaultFactory is Ownable {
         percentage = (rewards * variable) / reward_granularity; 
     }
 
-    /// @notice Calculate how far into the baseTime the depositor is
-    /// @param user address
-    /// @return percentVested_ uint256
-    function percentVestedFor(address user) public view returns (uint256 percentVested_) {
-        Vault memory userVault = UsersVault[user];
 
-        uint32 secondsSinceLast = uint32(block.timestamp) - userVault.lastClaimTime;
-        uint32 vesting = userVault.vesting;
-
-        if (vesting > 0) {
-            percentVested_ = (secondsSinceLast * reward_granularity) / vesting;
-        } else {
-            percentVested_ = 0;
-        }
-    }
-
-    /// @notice Calculate amount of SGX available for claim by depositor
-    /// @param user address
-    /// @return pendingRewards_ uint256
-    function pendingRewardsFor(address user) public view returns (uint256 pendingRewards_) {
-        uint256 percentVested = percentVestedFor(user);
-        uint256 rewards = UsersVault[user].claimableRewards;
-
-        if (percentVested >= reward_granularity) {
-            pendingRewards_ = rewards;
-        } else {
-            pendingRewards_ = (rewards * percentVested) / reward_granularity;
-        }
-    }
-    
-
-    
-    function getVaultInfo() public view returns(bool exists, uint32 lastClaimTime, uint32 vesting, uint256 claimableRewards, uint256 balance) {
+    function getVaultInfo() public view returns(bool exists, uint256 lastClaimTime, uint256 balance) {
         address user     = msg.sender;
         exists           = UsersVault[user].exists;
         lastClaimTime    = UsersVault[user].lastClaimTime;
-        vesting          = UsersVault[user].vesting;
-        claimableRewards = UsersVault[user].claimableRewards;
         balance          = UsersVault[user].balance;
     }
 
