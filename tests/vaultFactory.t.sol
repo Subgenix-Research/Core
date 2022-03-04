@@ -37,7 +37,7 @@ contract VaultFactoryTest is DSTest {
         lockup.setLongLockupTime(1555200); // 18 days in seconds
         lockup.setShortLockupTime(604800); // 07 days in seconds
 
-        vault.setRewardPercent(1e16);      // Daily rewards, 1e16 = 1%
+        vault.setInterestRate(1e17);      // Daily rewards, 1e17 = 10%
         vault.setBurnPercent(200);         // Percentage burned when claiming rewards, 200 = 2%.
         vault.setgSGXPercent(1300);        // Percentage of rewards converted to gSGX
         vault.setgSGXDistributed(500);     // Percentage of rewards sent to the gSGX contract.
@@ -55,7 +55,7 @@ contract VaultFactoryTest is DSTest {
         assertEq(address(vault.SGX()), address(SGX)); 
         assertEq(vault.Treasury(), Treasury); 
         assertEq(vault.minVaultDeposit(), 1e18); 
-        assertEq(vault.rewardPercent(), 1e16);
+        assertEq(vault.interestRate(), 1e17);
     }
     
     function testCreateVault() public {
@@ -65,7 +65,7 @@ contract VaultFactoryTest is DSTest {
         uint256 lastClaimTime;
         uint256 balance;
         
-        assertEq(vault.totalVaultsCreated(), 0);
+        assertEq(vault.totalNetworkVaults(), 0);
  
         // 1. Mint token to account.
         SGX.mint(address(user), amount);
@@ -81,7 +81,7 @@ contract VaultFactoryTest is DSTest {
 
         (created, lastClaimTime, balance) = vault.getVaultInfo();
 
-        assertEq(vault.totalVaultsCreated(), 1);
+        assertEq(vault.totalNetworkVaults(), 1);
         assertEq(SGX.balanceOf(Treasury), amount);
         assertTrue(created);
         assertEq(balance, amount);
@@ -155,9 +155,9 @@ contract VaultFactoryTest is DSTest {
         // *---- Jump in time and claim rewards ----* //
 
         // Jump 1 day into the future
-        hevm.warp(block.timestamp + 365 days); // Should receive 1% rewards.
+        hevm.warp(block.timestamp + 365 days); // Should receive 10% rewards.
 
-        uint256 reward = 1e16; // 1%
+        uint256 reward = 1e17; // 1%
         uint256 burnAmount = vault.calculatePercentage(reward, vault.getBurnPercentage()); 
         uint256 lockup7    = vault.calculatePercentage(reward, lockup.getShortPercentage()); 
         uint256 lockup18   = vault.calculatePercentage(reward, lockup.getLongPercentage()); 
@@ -198,8 +198,8 @@ contract VaultFactoryTest is DSTest {
         assertEq(vault.getMinVaultDeposit(), vault.minVaultDeposit());
     }
 
-    function testGetVaultReward() public {
-        assertEq(vault.getVaultReward(), vault.rewardPercent());
+    function testGetRewardPercent() public {
+        assertEq(vault.getInterestRate(), vault.interestRate());
     }
     
     /*///////////////////////////////////////////////////////////////

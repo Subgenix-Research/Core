@@ -29,7 +29,7 @@ contract VaultFactory is Ownable {
     address public immutable Treasury;  // Subgenix Treasury.
     address public immutable Lockup;    // LockUpHell contract.
 
-    uint256 public totalVaultsCreated = 0;
+    uint256 public totalNetworkVaults = 0;
     constructor(
         address _SGX,
         address _gSGX,
@@ -48,7 +48,7 @@ contract VaultFactory is Ownable {
 
     /// @notice Emmited when the reward percentage is updated.
     /// @param reward uint256, the new reward percentage.
-    event rewardPercentUpdated(uint256 reward);
+    event interestRateUpdated(uint256 reward);
 
     // Rewards are represented as following (per `baseTime`):
     //   - 100% = 1e18
@@ -61,8 +61,8 @@ contract VaultFactory is Ownable {
     // and distributed really small amount of rewards with high
     // precision. 
     
-    /// @notice reward Percentage (per `baseTime`) i.e. 1e17 = 10% / `baseTime`
-    uint256 public rewardPercent;
+    /// @notice Interest rate (per `baseTime`) i.e. 1e17 = 10% / `baseTime`
+    uint256 public interestRate;
 
     /// @notice the level of reward granularity 
     uint256 public constant reward_granularity = 1e18;
@@ -72,9 +72,9 @@ contract VaultFactory is Ownable {
 
     /// @notice Updates the reward percentage distributed per `baseTime`
     /// @param _reward uint256, the new reward percentage.
-    function setRewardPercent(uint256 _reward) external onlyOwner {
-        rewardPercent = _reward;
-        emit rewardPercentUpdated(_reward);
+    function setInterestRate(uint256 _reward) external onlyOwner {
+        interestRate = _reward;
+        emit interestRateUpdated(_reward);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -164,7 +164,7 @@ contract VaultFactory is Ownable {
             balance: amountBoosted
         });
 
-        totalVaultsCreated += 1;
+        totalNetworkVaults += 1;
 
         SGX.transferFrom(msg.sender, address(this), amount);
         SGX.approve(Treasury, amount);
@@ -202,7 +202,7 @@ contract VaultFactory is Ownable {
 
         uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
-        uint256 rewardsPercent = (timeElapsed * rewardPercent) / baseTime;
+        uint256 rewardsPercent = (timeElapsed * interestRate) / baseTime;
 
         uint256 interest = (userVault.balance * rewardsPercent) / reward_granularity;
 
@@ -286,15 +286,14 @@ contract VaultFactory is Ownable {
 
 
     function getVaultInfo() public view returns(bool exists, uint256 lastClaimTime, uint256 balance) {
-        address user     = msg.sender;
+        address user      = msg.sender;
         exists           = UsersVault[user].exists;
         lastClaimTime    = UsersVault[user].lastClaimTime;
         balance          = UsersVault[user].balance;
     }
 
-    /// @notice Calculate interest due.
-    function payoutFor(uint256 value_) public view returns (uint256 value) {
-        value = (value_ * rewardPercent) / reward_granularity;
+    function getTotalNetworkVaults() external view returns (uint256) {
+        return totalNetworkVaults;
     }
 
     function getSGXAddress() external view returns (address) {
@@ -309,8 +308,8 @@ contract VaultFactory is Ownable {
         return minVaultDeposit;
     }
 
-    function getVaultReward() external view returns (uint256) {
-        return rewardPercent;
+    function getInterestRate() external view returns (uint256) {
+        return interestRate;
     }
 
     function getBurnPercentage() external view returns (uint256) {
@@ -320,6 +319,7 @@ contract VaultFactory is Ownable {
     function getGSGXDistributed() external view returns (uint256) {
         return gSGXDistributed;
     }
+
     function getGSGXPercent() external view returns (uint256) {
         return gSGXPercent;
     }

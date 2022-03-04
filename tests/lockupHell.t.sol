@@ -45,7 +45,7 @@ contract LockUpHellTest is DSTest {
         lockup.setLongLockupTime(18 days); // 18 days in seconds
         lockup.setShortLockupTime(7 days); // 07 days in seconds
 
-        vault.setRewardPercent(1e16);      // Daily rewards, 1e16 = 1%
+        vault.setInterestRate(1e16);      // Daily rewards, 1e16 = 1%
         vault.setBurnPercent(200);         // Percentage burned when claiming rewards, 200 = 2%.
         vault.setgSGXPercent(1300);        // Percentage of rewards converted to gSGX
         vault.setgSGXDistributed(500);     // Percentage of rewards sent to the gSGX contract.

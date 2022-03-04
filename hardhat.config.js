@@ -10,13 +10,13 @@ module.exports = {
     networks: {
         hardhat: {
             gasPrice: 225000000000,
-            chainId: 43114,
+            chainId: 43113,
             forking: {
-                url: "https://api.avax.network/ext/bc/C/rpc",
+                url: "https://api.avax-test.network/ext/bc/C/rpc",
+                enabled: true,
                 accounts: [
                     process.env.privateKey
-                ],
-                enabled: true
+                ]
             }
         },
         mainnet: {

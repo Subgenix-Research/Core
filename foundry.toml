@@ -1,7 +1,7 @@
 [default]
 optimizer = true
 src = 'contracts'
-out = 'abis'
+out = 'out'
 test = 'tests'
 libs = ['lib']
 #remappings = ['ds-test/=lib/ds-test/src/']

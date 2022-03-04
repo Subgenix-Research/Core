@@ -1,7 +1,8 @@
 # Directories
 cache/
+out/
 node_modules/
-artifacts/
+#artifacts/
 
 # Files
 .DS_Store
