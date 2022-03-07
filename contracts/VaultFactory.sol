@@ -10,26 +10,16 @@ import {IgSGX} from "./interfaces/IgSGX.sol";
 /// @author Subgenix Research.
 /// @notice The VaultFactory contract creates and manages user's vaults.
 contract VaultFactory is Ownable {
-
-    event VaultCreated(address indexed user);
-    event SuccessfullyDeposited(address indexed user, uint256 amount);
-
-    // Info for Vault owner
-    struct Vault {
-        bool exists;
-        uint256 lastClaimTime; // Last claim.
-        uint256 balance;      // Total Deposited in the vault. 
-    }
     
-    mapping(address => Vault) public UsersVault;
-    
-    // Metadata
-    IERC20 public immutable SGX;        // Token given as payment for Vault.
-    IgSGX public immutable gSGX;        // Governance token.
+    /*///////////////////////////////////////////////////////////////
+                                METADATA
+    //////////////////////////////////////////////////////////////*/
+
+    IERC20 public immutable SGX;        // Official Subgenix Network token.
+    IgSGX public immutable gSGX;        // Subgenix Governance token.
     address public immutable Treasury;  // Subgenix Treasury.
     address public immutable Lockup;    // LockUpHell contract.
 
-    uint256 public totalNetworkVaults = 0;
     constructor(
         address _SGX,
         address _gSGX,
@@ -50,7 +40,7 @@ contract VaultFactory is Ownable {
     /// @param reward uint256, the new reward percentage.
     event interestRateUpdated(uint256 reward);
 
-    // Rewards are represented as following (per `baseTime`):
+    // The interestRate is represented as following:
     //   - 100% = 1e18
     //   -  10% = 1e17
     //   -   1% = 1e16
@@ -78,8 +68,119 @@ contract VaultFactory is Ownable {
     }
 
     /*///////////////////////////////////////////////////////////////
+                        REWARDS FUNCTIONALITY 
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Claims the available rewards from user's vault.
+    function claimRewards() public {
+        Vault memory userVault = UsersVault[msg.sender];
+        require(userVault.exists == true, "You don't have a vault.");
+
+        uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
+
+        require(timeElapsed >= 24 hours, "To early to claim rewards.");
+
+        uint256 rewardsPercent = (timeElapsed * interestRate) / baseTime;
+
+        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / reward_granularity) + userVault.pendingRewards;
+
+        distributeRewards(claimableRewards);
+
+        // Update user's vault info
+        userVault.lastClaimTime = block.timestamp;
+        userVault.pendingRewards = 0;
+        UsersVault[msg.sender] = userVault;
+    }
+    
+    /// @notice Distributes the claimable rewards to the user, obeying
+    ///         protocol rules.
+    /// @param claimableRewards uint256, the total amount of rewards the user is claiming.
+    function distributeRewards(uint256 claimableRewards) private {
+
+        uint256 mintAmount = claimableRewards;
+
+        (uint256 burnAmount, 
+         uint256 shortLockup, 
+         uint256 longLockup,
+         uint256 gSGXPercentage,
+         uint256 gSGXPercentageDistribtued) = calculateDistribution(claimableRewards); 
+        
+        claimableRewards -= burnAmount;
+
+        claimableRewards -= gSGXPercentage;
+
+        claimableRewards -= gSGXPercentageDistribtued;
+
+        SGX.mint(address(this), mintAmount);
+
+        SGX.burn(address(this), burnAmount); // Burn token
+
+        // Convert to gSGX and send to ser.
+        SGX.approve(address(gSGX), gSGXPercentage);
+        gSGX.deposit(gSGXPercentage);
+
+        // send to gSGX Contract
+        SGX.transfer(address(gSGX), gSGXPercentageDistribtued);
+
+        SGX.transfer(msg.sender, claimableRewards); // Transfer token to users.
+        
+        ILockupHell(Lockup).lockupRewards(msg.sender, shortLockup, longLockup); // Lockup tokens
+    }
+
+    /// @notice Calculate the final value of the percentage based on the rewards amount.
+    ///         eg. If rewards = 100 then 10% of it = 10.
+    /// @param rewards uint256, the amount all the percentages are being calculated on top off.
+    function calculateDistribution(uint256 rewards) internal view returns (
+    uint256 burnAmount, 
+    uint256 shortLockup, 
+    uint256 longLockup,
+    uint256 gSGXPercentage,
+    uint256 gSGXPercentageDistribtued
+    ) {
+        burnAmount = calculatePercentage(rewards, BurnPercent);
+        shortLockup = calculatePercentage(rewards, ILockupHell(Lockup).getShortPercentage());
+        longLockup = calculatePercentage(rewards, ILockupHell(Lockup).getLongPercentage());
+        gSGXPercentage = calculatePercentage(rewards, GSGXPercent);
+        gSGXPercentageDistribtued = calculatePercentage(rewards, GSGXDistributed);
+    } 
+
+    /// @notice Calculates X's percentage based on rewards amount.
+    /// @param rewards uint256, the amount the percentage is being calculated on top off.
+    /// @param variable uint256, the percentage being calculated. 
+    function calculatePercentage(
+        uint256 rewards, 
+        uint256 variable
+    ) public pure returns (uint256 percentage) {
+        percentage = (rewards * variable) / reward_granularity; 
+    }
+
+    /*///////////////////////////////////////////////////////////////
                          VAULTS CONFIGURATION
     //////////////////////////////////////////////////////////////*/
+    
+    // Vault's info.
+    struct Vault {
+        bool exists;
+        uint256 lastClaimTime;  // Last claim.
+        uint256 pendingRewards; // All pending rewards.
+        uint256 balance;        // Total Deposited in the vault. 
+    }
+    
+    /// @notice mapping of all users vaults.
+    mapping(address => Vault) public UsersVault;
+    
+    /// @notice Emitted when a vault is created.
+    /// @param user address, owner of the vault.
+    event VaultCreated(address indexed user);
+
+    /// @notice Emitted when user successfully deposit in his vault.
+    /// @param user address, user that initiated the deposit.
+    /// @param amount uint256, amount that was deposited in the vault.
+    event SuccessfullyDeposited(address indexed user, uint256 amount);
+
+    /// @notice Emitted when a vault is liquidated.
+    /// @param user address, owner of the vault that was liquidated.
+    event VaultLiquidated(address indexed user);
     
     /// @notice Emitted when the burn percentage is updated.
     /// @param percentage uint256, the new burn percentage.
@@ -94,77 +195,88 @@ contract VaultFactory is Ownable {
     event networkBoostUpdated(uint8 newBoost);
     
     /// @notice The minimum amount to deposit in the vault.
-    uint256 public minVaultDeposit;
+    uint256 public MinVaultDeposit;
     
     /// @notice Percentage burned when claiming rewards.
-    uint256 public burnPercent;
+    uint256 public BurnPercent;
+
+    /// @notice Percetage of SGX balance user will have after when liquidating vault.
+    uint256 public LiquidateVaultPercent;
 
     /// @notice Percentage of the reward converted to gSGX.
-    uint256 public gSGXPercent;
+    uint256 public GSGXPercent;
 
     /// @notice Percentage of the reward sent to the gSGX contract.
-    uint256 public gSGXDistributed;
+    uint256 public GSGXDistributed;
 
     /// @notice Used to boost users SGX. 
     /// @dev Multiplies users SGX (amount * networkBoost) when
     ///      depositing/creating a vault.
-    uint8 public networkBoost;
+    uint8 public NetworkBoost;
 
-    /// @notice Function used by the owner to update the burn percentage.
+    /// @notice Updates the burn percentage.
     /// @param percentage uint256, the new burn percentage.
     function setBurnPercent(uint256 percentage) external onlyOwner {
-        burnPercent = percentage;
+        BurnPercent = percentage;
         emit burnPercentUpdated(percentage);
     }
 
-    /// @notice Function used by the owner to update the minimum amount
-    ///         required to deposit in the vault.
+    /// @notice Updates the minimum required to deposit in the vault.
     /// @param minDeposit uint256, the new minimum deposit required.
     function setMinVaultDeposit(uint256 minDeposit) external onlyOwner {
-        minVaultDeposit = minDeposit;
+        MinVaultDeposit = minDeposit;
         emit minVaultDepositUpdated(minDeposit);
     }
 
-    /// @notice Function used by the owner to update the network boost.
+    /// @notice Updates the network boost.
     /// @param boost uint8, the new network boost.
     function setNetworkBoost(uint8 boost) external onlyOwner {
         require(boost >= 1, "Network Boost can't be < 1.");
-        networkBoost = boost;
+        NetworkBoost = boost;
         emit networkBoostUpdated(boost);
     }
 
-    /// @notice Function used by the owner to update the percentage of
-    ///         gSGX converted when claiming rewards.
+    /// @notice Updates the percentage of rewards coverted to gSGX
+    ///         when claiming rewards.
     /// @param percentage uint256, the new percentage.
     function setgSGXPercent(uint256 percentage) external onlyOwner {
-        gSGXPercent = percentage;
+        GSGXPercent = percentage;
     }
 
-    /// @notice Function used by the owner to update the percentage of
-    ///         the rewards that will be converted to gSGX and sent to the
-    ///         gSGX contract.
+    /// @notice Updates the percentage of the total amount in the vault 
+    ///         user will receive in SGX when liquidating the vualt.
+    /// @param  percentage uint256, the new percentage.
+    function setLiquidateVaultPercent(uint256 percentage) external onlyOwner {
+        LiquidateVaultPercent = percentage;
+    }
+
+    /// @notice Updates the percentage of the rewards that will be 
+    ///         converted to gSGX and sent to the gSGX contract.
     /// @param percentage uint256, the new percentage.
     function setgSGXDistributed(uint256 percentage) external onlyOwner {
-        gSGXDistributed = percentage;
+        GSGXDistributed = percentage;
     }
     
     /*///////////////////////////////////////////////////////////////
                         VAULTS FUNCTIONALITY
     //////////////////////////////////////////////////////////////*/
 
+    /// @notice Creates a vault for the user.
+    /// @param amount uint256, amount that will be deposited in the vault.
     function createVault(uint256 amount) external returns(bool) {
         require(UsersVault[msg.sender].exists == false, "User already has a Vault.");
-        require(amount >= minVaultDeposit, "Amount is too small.");
+        require(amount >= MinVaultDeposit, "Amount is too small.");
 
-        uint256 amountBoosted = amount * networkBoost;
+        uint256 amountBoosted = amount * NetworkBoost;
         
         UsersVault[msg.sender] = Vault({
             exists: true,
             lastClaimTime: block.timestamp,
+            pendingRewards: 0,
             balance: amountBoosted
         });
 
-        totalNetworkVaults += 1;
+        TotalNetworkVaults += 1;
 
         SGX.transferFrom(msg.sender, address(this), amount);
         SGX.approve(Treasury, amount);
@@ -174,16 +286,28 @@ contract VaultFactory is Ownable {
         return true;
     }
 
+    /// @notice Deposits `amount` of SGX in the vault.
+    /// @param amount uint256, amount that will be deposited in the vault.
     function depositInVault(uint256 amount) external {
-        require(amount >= minVaultDeposit, "Amount is too small.");
-
-        uint256 amountBoosted = amount * networkBoost;
-
-        // Claim current rewards and reset lastClaimTime         
-        claimRewards();
+        require(amount >= MinVaultDeposit, "Amount is too small.");
+        Vault memory userVault = UsersVault[msg.sender];
         
-        // Add amount to users vault & update claimable rewards
-        UsersVault[msg.sender].balance += amountBoosted;
+        require(userVault.exists == true, "You don't have a vault.");
+
+        uint256 amountBoosted = amount * NetworkBoost;
+
+        uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
+
+        uint256 rewardsPercent = (timeElapsed * interestRate) / baseTime;
+
+        uint256 interest = (userVault.balance * rewardsPercent) / reward_granularity;
+
+        // Update user's vault info
+        userVault.lastClaimTime = block.timestamp;
+        userVault.pendingRewards += interest;
+        userVault.balance += amountBoosted;
+
+        UsersVault[msg.sender] = userVault;
 
         // User needs to approve this contract to spend `token`.
         SGX.transferFrom(msg.sender, address(this), amount);
@@ -192,138 +316,93 @@ contract VaultFactory is Ownable {
 
         emit SuccessfullyDeposited(msg.sender, amountBoosted); 
     }
-    
-    /*///////////////////////////////////////////////////////////////
-                         PUBLIC FUNCTIONS 
-    //////////////////////////////////////////////////////////////*/
 
-    function claimRewards() public {
+    /// @notice Deletes user's vault.
+    function liquidateVault() external {
         Vault memory userVault = UsersVault[msg.sender];
+        require(userVault.exists == true, "You don't have a vault.");
 
+        // 1. Claim all available rewards.
         uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
         uint256 rewardsPercent = (timeElapsed * interestRate) / baseTime;
 
-        uint256 interest = (userVault.balance * rewardsPercent) / reward_granularity;
+        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / reward_granularity) + userVault.pendingRewards;
 
-        distributeRewards(interest, msg.sender);
+        distributeRewards(claimableRewards);
 
-        // Update user's vault info
+        // Calculate liquidateVaultPercent of user's vault balance.
+        uint256 sgxPercent = (userVault.balance * LiquidateVaultPercent) / reward_granularity;
+
+        // Delete user vault.
+        userVault.exists = false;
         userVault.lastClaimTime = block.timestamp;
+        userVault.pendingRewards = 0;
+        userVault.balance = 0;
+
         UsersVault[msg.sender] = userVault;
+
+        ProtocolDebt += sgxPercent;
+        TotalNetworkVaults -= 1;
+
+        SGX.mint(msg.sender, sgxPercent);
+
+        emit VaultLiquidated(msg.sender);
     }
+
+    /*///////////////////////////////////////////////////////////////
+                        PROTOCOL FUNCTIONALITY 
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Total vaults created.
+    uint256 public TotalNetworkVaults;
     
-    /*///////////////////////////////////////////////////////////////
-                            PRIVATE FUNCTIONS 
-    //////////////////////////////////////////////////////////////*/
-    function distributeRewards(uint256 claimableRewards, address user) private {
-        require(msg.sender == user, "You can only distribute your own rewards.");
-        SGX.mint(address(this), claimableRewards);
+    /// @notice Total protocol debt from vaults liquidated.
+    uint256 public ProtocolDebt;
 
-        (uint256 burnAmount, 
-         uint256 shortLockup, 
-         uint256 longLockup,
-         uint256 gSGXPercentage,
-         uint256 gSGXPercentageDistribtued) = updateDistribution(claimableRewards); 
-        
-        claimableRewards -= burnAmount;
-
-        claimableRewards -= gSGXPercentage;
-
-        claimableRewards -= gSGXPercentageDistribtued;
-
-        SGX.burn(address(this), burnAmount); // Burn token
-
-        // 13% Convert to gSGX and send to ser.
-        SGX.approve(address(gSGX), gSGXPercentage);
-        gSGX.deposit(gSGXPercentage);
-
-        // 05% sent to gSGX Contract
-        SGX.transfer(address(gSGX), gSGXPercentageDistribtued);
-
-        SGX.transfer(msg.sender, claimableRewards); // Transfer token to users.
-        
-        ILockupHell(Lockup).lockupRewards(msg.sender, shortLockup, longLockup); // Lockup tokens
-    }
+    /// @notice Emitted when protocol debt is repaid.
+    /// @param amount uint256, amount of debt that was repaid.
+    event debtReaid(uint256 amount);
     
+    /// @notice Repay the debt created by liquidated vauts.
+    /// @param amount uint256, the amount of debt being repaid.
+    function repayDebt(uint256 amount) external onlyOwner {
+        require(amount <= ProtocolDebt, "Amount too big.");
+
+        ProtocolDebt -= amount;
+
+        // Treasury needs to give permission to this contract.
+        SGX.burn(address(this), amount);
+
+        emit debtReaid(amount);
+    }
+
 
     /*///////////////////////////////////////////////////////////////
-                            INTERNAL FUNCTIONS 
+                           VIEW FUNCTIONALITY 
     //////////////////////////////////////////////////////////////*/
 
-    function updateDistribution(uint256 rewards) internal view returns (
-    uint256 burnAmount, 
-    uint256 shortLockup, 
-    uint256 longLockup,
-    uint256 gSGXPercentage,
-    uint256 gSGXPercentageDistribtued
-    ) {
-        burnAmount = calculatePercentage(rewards, burnPercent);
-        shortLockup = calculatePercentage(rewards, ILockupHell(Lockup).getShortPercentage());
-        longLockup = calculatePercentage(rewards, ILockupHell(Lockup).getLongPercentage());
-        gSGXPercentage = calculatePercentage(rewards, gSGXPercent);
-        gSGXPercentageDistribtued = calculatePercentage(rewards, gSGXDistributed);
-    } 
 
-    /// @notice Updates the amount that is being burned when claiming rewards
-    /// @param amount New BurnPercentage amount
-    function updateBurnPercentage(uint256 amount) internal onlyOwner {   
-        burnPercent = amount;
-         
-        emit burnPercentUpdated(amount);
+    /// @notice Get user's vault info.
+    function getVaultInfo() public view returns(bool exists, uint256 lastClaimTime, uint256 pendingRewards, uint256 balance) {
+        exists         = UsersVault[msg.sender].exists;
+        lastClaimTime  = UsersVault[msg.sender].lastClaimTime;
+        pendingRewards = UsersVault[msg.sender].pendingRewards;
+        balance        = UsersVault[msg.sender].balance;
     }
 
-    /*///////////////////////////////////////////////////////////////
-                            VIEW FUNCTIONS 
-    //////////////////////////////////////////////////////////////*/
-
-    function calculatePercentage(
-        uint256 rewards, 
-        uint256 variable
-    ) public pure returns (uint256 percentage) {
-        percentage = (rewards * variable) / reward_granularity; 
-    }
-
-
-    function getVaultInfo() public view returns(bool exists, uint256 lastClaimTime, uint256 balance) {
-        address user      = msg.sender;
-        exists           = UsersVault[user].exists;
-        lastClaimTime    = UsersVault[user].lastClaimTime;
-        balance          = UsersVault[user].balance;
-    }
-
-    function getTotalNetworkVaults() external view returns (uint256) {
-        return totalNetworkVaults;
-    }
-
+    /// @notice Get the SGX token address.
     function getSGXAddress() external view returns (address) {
         return address(SGX);
     }
 
-    function getTreasuryAddress() external view returns (address) {
-        return Treasury;
+    /// @notice Get the gSGX token address.
+    function getGSGXAddress() external view returns (address) {
+        return address(gSGX);
     }
 
-    function getMinVaultDeposit() external view returns (uint256) {
-        return minVaultDeposit;
-    }
-
-    function getInterestRate() external view returns (uint256) {
-        return interestRate;
-    }
-
-    function getBurnPercentage() external view returns (uint256) {
-        return burnPercent;
-    }
-
-    function getGSGXDistributed() external view returns (uint256) {
-        return gSGXDistributed;
-    }
-
-    function getGSGXPercent() external view returns (uint256) {
-        return gSGXPercent;
-    }
-
+    /// @notice Check if vault exists.
+    /// @param user address, User we are checking the vault.
     function vaultExists(address user) external view returns(bool) {
         return UsersVault[user].exists;
     }

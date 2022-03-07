@@ -54,7 +54,7 @@ contract VaultFactoryTest is DSTest {
     function testMetaData() public { 
         assertEq(address(vault.SGX()), address(SGX)); 
         assertEq(vault.Treasury(), Treasury); 
-        assertEq(vault.minVaultDeposit(), 1e18); 
+        assertEq(vault.MinVaultDeposit(), 1e18); 
         assertEq(vault.interestRate(), 1e17);
     }
     
@@ -63,9 +63,10 @@ contract VaultFactoryTest is DSTest {
         uint256 amount = 200e18;
         bool created; 
         uint256 lastClaimTime;
+        uint256 pendingRewards;
         uint256 balance;
         
-        assertEq(vault.totalNetworkVaults(), 0);
+        assertEq(vault.TotalNetworkVaults(), 0);
  
         // 1. Mint token to account.
         SGX.mint(address(user), amount);
@@ -79,9 +80,9 @@ contract VaultFactoryTest is DSTest {
         hevm.startPrank(address(user));
         vault.createVault(amount);
 
-        (created, lastClaimTime, balance) = vault.getVaultInfo();
+        (created, lastClaimTime, pendingRewards, balance) = vault.getVaultInfo();
 
-        assertEq(vault.totalNetworkVaults(), 1);
+        assertEq(vault.TotalNetworkVaults(), 1);
         assertEq(SGX.balanceOf(Treasury), amount);
         assertTrue(created);
         assertEq(balance, amount);
@@ -92,8 +93,8 @@ contract VaultFactoryTest is DSTest {
 
 
     function testDepositInVault() public {
-        uint256 amount = 400e18;
-        uint256 deposit = 101e18;
+        uint256 amount = 10e18;
+        uint256 deposit = 1e18;
         uint256 balance;
         uint256 balance2;
 
@@ -103,20 +104,24 @@ contract VaultFactoryTest is DSTest {
 
         hevm.startPrank(msg.sender);
         // 2. Approve this address to spend impersonated account tokens.
-        SGX.approve(address(vault), amount);
+        SGX.approve(address(vault), type(uint256).max);
          
         // 3. Impersonate user
         vault.createVault(deposit);
         
-        ( , , balance) = vault.getVaultInfo();
+        ( , , , balance) = vault.getVaultInfo();
 
         uint256 currentBalance = balanceBefore - deposit;
 
+        //hevm.warp(block.timestamp + 1 days);
+
         vault.depositInVault(deposit); 
         
-        ( , , balance2) = vault.getVaultInfo();
+        ( , , , balance2) = vault.getVaultInfo();
+        
+        uint256 expectedRewards = 273972602739726;
 
-        uint256 currentBalance2 = currentBalance - deposit;
+        uint256 currentBalance2 = (currentBalance - deposit);
 
         assertEq(balance2, balance+deposit);
         assertEq(SGX.balanceOf(msg.sender), currentBalance2);
@@ -147,7 +152,7 @@ contract VaultFactoryTest is DSTest {
         vault.createVault(deposit);
 
         hevm.prank(msg.sender);
-        ( , , balance) = vault.getVaultInfo();
+        ( , , , balance) = vault.getVaultInfo();
 
         uint256 userSGXBalance = amount - deposit;
         
@@ -158,11 +163,11 @@ contract VaultFactoryTest is DSTest {
         hevm.warp(block.timestamp + 365 days); // Should receive 10% rewards.
 
         uint256 reward = 1e17; // 1%
-        uint256 burnAmount = vault.calculatePercentage(reward, vault.getBurnPercentage()); 
+        uint256 burnAmount = vault.calculatePercentage(reward, vault.BurnPercent()); 
         uint256 lockup7    = vault.calculatePercentage(reward, lockup.getShortPercentage()); 
         uint256 lockup18   = vault.calculatePercentage(reward, lockup.getLongPercentage()); 
-        uint256 gSGXDistributed = vault.calculatePercentage(reward, vault.getGSGXDistributed());
-        uint256 gSGXPercentage = vault.calculatePercentage(reward, vault.getGSGXPercent());
+        uint256 gSGXDistributed = vault.calculatePercentage(reward, vault.GSGXDistributed());
+        uint256 gSGXPercentage = vault.calculatePercentage(reward, vault.GSGXPercent());
         
         reward -= burnAmount;
         reward -= lockup7;
@@ -190,18 +195,7 @@ contract VaultFactoryTest is DSTest {
         assertEq(vault.getSGXAddress(), address(vault.SGX()));
     }
 
-    function testGetTreasuryAddress() public {
-        assertEq(vault.getTreasuryAddress(), vault.Treasury());
-    }
 
-    function testGetMinVaultDeposit() public {
-        assertEq(vault.getMinVaultDeposit(), vault.minVaultDeposit());
-    }
-
-    function testGetRewardPercent() public {
-        assertEq(vault.getInterestRate(), vault.interestRate());
-    }
-    
     /*///////////////////////////////////////////////////////////////
                               FUZZ-TESTING
     //////////////////////////////////////////////////////////////*/

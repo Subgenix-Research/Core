@@ -1,20 +1,17 @@
 const hre = require("hardhat");
 const { BigNumber } = require("@ethersproject/bignumber");
-
+ 
 async function main() {
 
     const [owner] = await ethers.getSigners();
     
-    const VaultFactory = await ethers.getContractFactory("VaultFactory");
-    const vault = await VaultFactory.attach("0xE41E9F1D23658925124ef2Ca73b945254A13EE81");
+    const gSGX = await ethers.getContractFactory("gSGX");
+    const gsgx = await gSGX.attach("0xDd1eA6ca171370556513e10ec3ee68Dc4020bB2e");
 
 
-    const apy = await vault.getInterestRate();
+    const value = await gsgx.setWithdrawCeil(ethers.utils.parseEther("100000"));
 
-    // Calculate interest rate in percentage.
-    const interestRate = (apy.mul(100)).div(ethers.utils.parseEther("1"));
-
-    console.log(interestRate.toString());
+    console.log("Done");
 
 }
 

@@ -62,6 +62,10 @@ async function main() {
     await (await lockup.setShortPercentage(1200)).wait();
 
 
+    console.log("   set gSGX withdraw Ceil...");
+    await (await gSGX.setWithdrawCeil(ethers.utils.parseEther("100000"))).wait();
+
+
     console.log("   set lockupTime..");
     await (await lockup.setLongLockupTime(1555200)).wait();
     await (await lockup.setShortLockupTime(604800)).wait();
