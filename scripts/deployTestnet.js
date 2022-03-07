@@ -72,7 +72,7 @@ async function main() {
 
 
     console.log("   set vault variables..");
-    await (await vault.setInterestRate(ethers.utils.parseUnits("1", 17))).wait(); // 10%
+    await (await vault.setInterestRate(ethers.utils.parseUnits("1", 16))).wait(); // 10%
     await (await vault.setBurnPercent(200)).wait();
     await (await vault.setgSGXPercent(1300)).wait();
     await (await vault.setgSGXDistributed(500)).wait();

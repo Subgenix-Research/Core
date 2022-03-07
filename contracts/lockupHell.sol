@@ -123,10 +123,10 @@ contract LockUpHell is Ownable, ReentrancyGuard {
 
         // first it checks how many `lockups` the user has, then it sets
         // the next index to be 'length+1' and finally it updates the 
-        // UsersLockupLength to include the new Lockup.
+        // UsersLockupLength to be 'length+1'.
         uint32 userLockups = UsersLockupLength[user];
         uint32 index = userLockups+1;
-        UsersLockupLength[user] = userLockups+1;
+        UsersLockupLength[user] = index;
 
         // Creates a new Lockup and add it to the new index location
         // of the UsersLockup mapping.
@@ -165,7 +165,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         // If all three are true, the user can safely colect their short lockup rewards.
         require(UsersLockupLength[msg.sender] >= index, "Index invalid");
         require(UsersLockup[msg.sender][index].shortRewardsColected == false, "Already claimed.");
-        require(block.timestamp > UsersLockup[msg.sender][index].shortLockupPeriod, "Still in lockup period.");
+        require(block.timestamp > UsersLockup[msg.sender][index].shortLockupPeriod, "Too early to claim.");
 
         // Make a temporary copy of the user `lockup` and get the short lockup rewards amount.
         Lockup memory temp = UsersLockup[msg.sender][index];
@@ -203,7 +203,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         // If all three are true, the user can safely colect their long lockup rewards.
         require(UsersLockupLength[msg.sender] >= index, "Index invalid");
         require(UsersLockup[msg.sender][index].longRewardsColected == false, "Already claimed.");
-        require(block.timestamp > UsersLockup[msg.sender][index].longLockupPeriod, "Still in lockup period.");
+        require(block.timestamp > UsersLockup[msg.sender][index].longLockupPeriod, "Too early to claim.");
 
         // Make a temporary copy of the user `lockup` and get the long lockup rewards amount.
         Lockup memory temp = UsersLockup[msg.sender][index];
