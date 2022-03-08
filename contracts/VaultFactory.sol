@@ -442,6 +442,16 @@ contract VaultFactory is Ownable {
         return UsersVault[user].exists;
     }
 
+    function canClaimRewards(address user) external view returns(bool) {
+        require(UsersVault[user].exists == true, "Vault doens't exist.");
+
+        uint256 lastClaimTime = UsersVault[user].lastClaimTime;
+
+        if ((block.timestamp - lastClaimTime) >= 24 hours) { return true; }
+
+        return false; 
+    }
+
     /// @notice Get the SGX token address.
     function getSGXAddress() external view returns (address) {
         return address(SGX);

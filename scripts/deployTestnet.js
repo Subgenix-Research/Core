@@ -2,7 +2,7 @@ const colors = require("colors");
 
 async function main() {
 
-    const treasury = "0x11C0402CA8326a118A28abA79E8ddBCC69b3C910";
+    const treasury = "0x59fcd31a5d1356844aD410e138D8a915E8AB20d0";
 
     const [owner] = await ethers.getSigners();
 
@@ -72,18 +72,19 @@ async function main() {
 
 
     console.log("   set vault variables..");
-    await (await vault.setInterestRate(ethers.utils.parseUnits("1", 16))).wait(); // 10%
+    await (await vault.setInterestRate(ethers.utils.parseUnits("1", 17))).wait(); // 10%
     await (await vault.setBurnPercent(200)).wait();
     await (await vault.setgSGXPercent(1300)).wait();
     await (await vault.setgSGXDistributed(500)).wait();
     await (await vault.setMinVaultDeposit(ethers.utils.parseEther("1"))).wait();
+    await (await vault.setNetworkBoost(1)).wait();
 
     console.log("   set token manager..");
     await (await SGX.setManager(vault.address, true)).wait();
     await (await SGX.setManager(owner.address, true)).wait();
   
     console.log("   mint owner tokens...");
-    await (await SGX.mint(owner.address, ethers.utils.parseEther("10000"))).wait();
+    await (await SGX.mint(owner.address, ethers.utils.parseEther("100000"))).wait();
 
     console.log("All done!".green);
 }
