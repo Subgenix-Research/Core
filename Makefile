@@ -3,7 +3,8 @@ build:
 	npx hardhat compile
 
 clean:
-	forge clean
+	forge clean && \
+	npx hardhat clean
 
 test:
 	forge clean && \

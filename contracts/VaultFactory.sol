@@ -32,127 +32,6 @@ contract VaultFactory is Ownable {
         Lockup = _lockup;
     }
     
-    /*///////////////////////////////////////////////////////////////
-                         REWARDS CONFIGURATION
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Emmited when the reward percentage is updated.
-    /// @param reward uint256, the new reward percentage.
-    event interestRateUpdated(uint256 reward);
-
-    // The interestRate is represented as following:
-    //   - 100% = 1e18
-    //   -  10% = 1e17
-    //   -   1% = 1e16
-    //   - 0.1% = 1e15
-    //   and so on..
-    //
-    // This allow us to have a really high level of granulatity,
-    // and distributed really small amount of rewards with high
-    // precision. 
-    
-    /// @notice Interest rate (per `baseTime`) i.e. 1e17 = 10% / `baseTime`
-    uint256 public interestRate;
-
-    /// @notice the level of reward granularity 
-    uint256 public constant reward_granularity = 1e18;
-
-    /// @notice Base time used to calculate rewards.
-    uint32 public constant baseTime = 365 days;
-
-    /// @notice Updates the reward percentage distributed per `baseTime`
-    /// @param _reward uint256, the new reward percentage.
-    function setInterestRate(uint256 _reward) external onlyOwner {
-        interestRate = _reward;
-        emit interestRateUpdated(_reward);
-    }
-
-    /*///////////////////////////////////////////////////////////////
-                        REWARDS FUNCTIONALITY 
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Claims the available rewards from user's vault.
-    function claimRewards() public {
-        Vault memory userVault = UsersVault[msg.sender];
-        require(userVault.exists == true, "You don't have a vault.");
-
-        uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
-
-        require(timeElapsed >= 24 hours, "To early to claim rewards.");
-
-        uint256 rewardsPercent = (timeElapsed * interestRate) / baseTime;
-
-        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / reward_granularity) + userVault.pendingRewards;
-
-        distributeRewards(claimableRewards);
-
-        // Update user's vault info
-        userVault.lastClaimTime = block.timestamp;
-        userVault.pendingRewards = 0;
-        UsersVault[msg.sender] = userVault;
-    }
-    
-    /// @notice Distributes the claimable rewards to the user, obeying
-    ///         protocol rules.
-    /// @param claimableRewards uint256, the total amount of rewards the user is claiming.
-    function distributeRewards(uint256 claimableRewards) private {
-
-        uint256 mintAmount = claimableRewards;
-
-        (uint256 burnAmount, 
-         uint256 shortLockup, 
-         uint256 longLockup,
-         uint256 gSGXPercentage,
-         uint256 gSGXPercentageDistribtued) = calculateDistribution(claimableRewards); 
-        
-        claimableRewards -= burnAmount;
-
-        claimableRewards -= gSGXPercentage;
-
-        claimableRewards -= gSGXPercentageDistribtued;
-
-        SGX.mint(address(this), mintAmount);
-
-        SGX.burn(address(this), burnAmount); // Burn token
-
-        // Convert to gSGX and send to ser.
-        SGX.approve(address(gSGX), gSGXPercentage);
-        gSGX.deposit(gSGXPercentage);
-
-        // send to gSGX Contract
-        SGX.transfer(address(gSGX), gSGXPercentageDistribtued);
-
-        SGX.transfer(msg.sender, claimableRewards); // Transfer token to users.
-        
-        ILockupHell(Lockup).lockupRewards(msg.sender, shortLockup, longLockup); // Lockup tokens
-    }
-
-    /// @notice Calculate the final value of the percentage based on the rewards amount.
-    ///         eg. If rewards = 100 then 10% of it = 10.
-    /// @param rewards uint256, the amount all the percentages are being calculated on top off.
-    function calculateDistribution(uint256 rewards) internal view returns (
-    uint256 burnAmount, 
-    uint256 shortLockup, 
-    uint256 longLockup,
-    uint256 gSGXPercentage,
-    uint256 gSGXPercentageDistribtued
-    ) {
-        burnAmount = calculatePercentage(rewards, BurnPercent);
-        shortLockup = calculatePercentage(rewards, ILockupHell(Lockup).getShortPercentage());
-        longLockup = calculatePercentage(rewards, ILockupHell(Lockup).getLongPercentage());
-        gSGXPercentage = calculatePercentage(rewards, GSGXPercent);
-        gSGXPercentageDistribtued = calculatePercentage(rewards, GSGXDistributed);
-    } 
-
-    /// @notice Calculates X's percentage based on rewards amount.
-    /// @param rewards uint256, the amount the percentage is being calculated on top off.
-    /// @param variable uint256, the percentage being calculated. 
-    function calculatePercentage(
-        uint256 rewards, 
-        uint256 variable
-    ) public pure returns (uint256 percentage) {
-        percentage = (rewards * variable) / reward_granularity; 
-    }
 
     /*///////////////////////////////////////////////////////////////
                          VAULTS CONFIGURATION
@@ -160,7 +39,7 @@ contract VaultFactory is Ownable {
     
     // Vault's info.
     struct Vault {
-        bool exists;
+        bool exists;            // vault exists.
         uint256 lastClaimTime;  // Last claim.
         uint256 pendingRewards; // All pending rewards.
         uint256 balance;        // Total Deposited in the vault. 
@@ -277,6 +156,7 @@ contract VaultFactory is Ownable {
         });
 
         TotalNetworkVaults += 1;
+        TotalSGXDeposited += amount;
 
         SGX.transferFrom(msg.sender, address(this), amount);
         SGX.approve(Treasury, amount);
@@ -298,7 +178,7 @@ contract VaultFactory is Ownable {
 
         uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
-        uint256 rewardsPercent = (timeElapsed * interestRate) / baseTime;
+        uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
 
         uint256 interest = (userVault.balance * rewardsPercent) / reward_granularity;
 
@@ -309,6 +189,8 @@ contract VaultFactory is Ownable {
 
         UsersVault[msg.sender] = userVault;
 
+        TotalSGXDeposited += amount;
+
         // User needs to approve this contract to spend `token`.
         SGX.transferFrom(msg.sender, address(this), amount);
         SGX.approve(Treasury, amount);
@@ -318,18 +200,19 @@ contract VaultFactory is Ownable {
     }
 
     /// @notice Deletes user's vault.
-    function liquidateVault() external {
-        Vault memory userVault = UsersVault[msg.sender];
+    function liquidateVault(address user) external {
+        require(msg.sender == user, "You can only liquidate your own vault.");
+        Vault memory userVault = UsersVault[user];
         require(userVault.exists == true, "You don't have a vault.");
 
         // 1. Claim all available rewards.
         uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
-        uint256 rewardsPercent = (timeElapsed * interestRate) / baseTime;
+        uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
 
         uint256 claimableRewards = ((userVault.balance * rewardsPercent) / reward_granularity) + userVault.pendingRewards;
 
-        distributeRewards(claimableRewards);
+        distributeRewards(claimableRewards,  user);
 
         // Calculate liquidateVaultPercent of user's vault balance.
         uint256 sgxPercent = (userVault.balance * LiquidateVaultPercent) / reward_granularity;
@@ -340,14 +223,171 @@ contract VaultFactory is Ownable {
         userVault.pendingRewards = 0;
         userVault.balance = 0;
 
-        UsersVault[msg.sender] = userVault;
+        UsersVault[user] = userVault;
 
         ProtocolDebt += sgxPercent;
         TotalNetworkVaults -= 1;
 
-        SGX.mint(msg.sender, sgxPercent);
+        SGX.mint(user, sgxPercent);
 
-        emit VaultLiquidated(msg.sender);
+        emit VaultLiquidated(user);
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                         REWARDS CONFIGURATION
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Emmited when the reward percentage is updated.
+    /// @param reward uint256, the new reward percentage.
+    event interestRateUpdated(uint256 reward);
+
+    // The interestRate is represented as following:
+    //   - 100% = 1e18
+    //   -  10% = 1e17
+    //   -   1% = 1e16
+    //   - 0.1% = 1e15
+    //   and so on..
+    //
+    // This allow us to have a really high level of granulatity,
+    // and distributed really small amount of rewards with high
+    // precision. 
+    
+    /// @notice Interest rate (per `baseTime`) i.e. 1e17 = 10% / `baseTime`
+    uint256 public InterestRate;
+
+    /// @notice the level of reward granularity 
+    uint256 public constant reward_granularity = 1e18;
+
+    /// @notice Base time used to calculate rewards.
+    uint32 public constant baseTime = 365 days;
+
+    /// @notice Updates the reward percentage distributed per `baseTime`
+    /// @param _reward uint256, the new reward percentage.
+    function setInterestRate(uint256 _reward) external onlyOwner {
+        InterestRate = _reward;
+        emit interestRateUpdated(_reward);
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                        REWARDS FUNCTIONALITY 
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Claims the available rewards from user's vault.
+    /// @param user address, who we are claiming rewards of.
+    function claimRewards(address user) public {
+        require(msg.sender == user, "You can only claim your own rewards.");
+        Vault memory userVault = UsersVault[user];
+        require(userVault.exists == true, "You don't have a vault.");
+
+        uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
+
+        require(timeElapsed >= 24 hours, "To early to claim rewards.");
+
+        uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
+
+        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / reward_granularity) + userVault.pendingRewards;
+
+        // Update user's vault info
+        userVault.lastClaimTime = block.timestamp;
+        userVault.pendingRewards = 0;
+        UsersVault[msg.sender] = userVault;
+
+        distributeRewards(claimableRewards, user);
+    }
+    
+    /// @notice Distributes the claimable rewards to the user, obeying
+    ///         protocol rules.
+    /// @param claimableRewards uint256, the total amount of rewards the user is claiming.
+    /// @param user address, who we are distributing rewards to.
+    function distributeRewards(uint256 claimableRewards, address user) private {
+
+        uint256 mintAmount = claimableRewards;
+
+        (uint256 burnAmount, 
+         uint256 shortLockup, 
+         uint256 longLockup,
+         uint256 gSGXPercentage,
+         uint256 gSGXPercentageDistributed) = calculateDistribution(claimableRewards); 
+        
+        claimableRewards -= burnAmount;
+
+        claimableRewards -= gSGXPercentage;
+
+        claimableRewards -= gSGXPercentageDistributed;
+
+        SGX.mint(address(this), mintAmount);
+
+        SGX.burn(address(this), burnAmount); // Burn token
+
+        // Convert to gSGX and send to ser.
+        SGX.approve(address(gSGX), gSGXPercentage);
+        gSGX.deposit(gSGXPercentage);
+
+        // send to gSGX Contract
+        SGX.transfer(address(gSGX), gSGXPercentageDistributed);
+
+        SGX.transfer(user, claimableRewards); // Transfer token to users.
+        
+        ILockupHell(Lockup).lockupRewards(user, shortLockup, longLockup); // Lockup tokens
+    }
+
+    /// @notice Calculate the final value of the percentage based on the rewards amount.
+    ///         eg. If rewards = 100 then 10% of it = 10.
+    /// @param rewards uint256, the amount all the percentages are being calculated on top off.
+    function calculateDistribution(uint256 rewards) internal view returns (
+    uint256 burnAmount, 
+    uint256 shortLockup, 
+    uint256 longLockup,
+    uint256 gSGXPercentage,
+    uint256 gSGXPercentageDistribtued
+    ) {
+        burnAmount = calculatePercentage(rewards, BurnPercent);
+        shortLockup = calculatePercentage(rewards, ILockupHell(Lockup).getShortPercentage());
+        longLockup = calculatePercentage(rewards, ILockupHell(Lockup).getLongPercentage());
+        gSGXPercentage = calculatePercentage(rewards, GSGXPercent);
+        gSGXPercentageDistribtued = calculatePercentage(rewards, GSGXDistributed);
+    } 
+
+    /// @notice Calculates X's percentage based on rewards amount.
+    /// @param rewards uint256, the amount the percentage is being calculated on top off.
+    /// @param variable uint256, the percentage being calculated. 
+    function calculatePercentage(
+        uint256 rewards, 
+        uint256 variable
+    ) public pure returns (uint256 percentage) {
+        percentage = (rewards * variable) / reward_granularity; 
+    }
+
+    /// @notice Checks how much reward the User can get if he claim rewards.
+    /// @param user address, who we are checking the pending rewards.
+    /// @return Amount of rewards in SGX user will receive with taking into 
+    ///         consideration the lockups.
+    function viewPendingRewards(address user) external view returns(uint256) {
+        Vault memory userVault = UsersVault[user];
+        require(userVault.exists == true, "You don't have a vault.");
+        
+        uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
+
+        uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
+
+        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / reward_granularity) + userVault.pendingRewards;
+
+        (uint256 burnAmount, 
+          , // Short lockup
+          , // Long lockup
+         uint256 gSGXPercentage,
+         uint256 gSGXPercentageDistributed) = calculateDistribution(claimableRewards); 
+        
+        // Amount burned.
+        claimableRewards -= burnAmount;
+
+        // Amount converted to gSGX and sent to user.
+        claimableRewards -= gSGXPercentage; 
+
+        // Amount sent to gSGX contract.
+        claimableRewards -= gSGXPercentageDistributed;
+
+        return claimableRewards;
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -356,6 +396,9 @@ contract VaultFactory is Ownable {
 
     /// @notice Total vaults created.
     uint256 public TotalNetworkVaults;
+
+    /// @notice Total SGX in the Protocol
+    uint256 public TotalSGXDeposited;
     
     /// @notice Total protocol debt from vaults liquidated.
     uint256 public ProtocolDebt;
@@ -363,7 +406,7 @@ contract VaultFactory is Ownable {
     /// @notice Emitted when protocol debt is repaid.
     /// @param amount uint256, amount of debt that was repaid.
     event debtReaid(uint256 amount);
-    
+
     /// @notice Repay the debt created by liquidated vauts.
     /// @param amount uint256, the amount of debt being repaid.
     function repayDebt(uint256 amount) external onlyOwner {
@@ -384,11 +427,19 @@ contract VaultFactory is Ownable {
 
 
     /// @notice Get user's vault info.
-    function getVaultInfo() public view returns(bool exists, uint256 lastClaimTime, uint256 pendingRewards, uint256 balance) {
-        exists         = UsersVault[msg.sender].exists;
-        lastClaimTime  = UsersVault[msg.sender].lastClaimTime;
-        pendingRewards = UsersVault[msg.sender].pendingRewards;
-        balance        = UsersVault[msg.sender].balance;
+    /// @param user address, user we are checking the vault.
+    function getVaultInfo(address user) public view returns(uint256 lastClaimTime, uint256 pendingRewards, uint256 balance) {
+        require(UsersVault[user].exists == true, "Vault doens't exist.");
+
+        lastClaimTime  = UsersVault[user].lastClaimTime;
+        pendingRewards = UsersVault[user].pendingRewards;
+        balance        = UsersVault[user].balance;
+    }
+
+    /// @notice Check if vault exists.
+    /// @param user address, User we are checking the vault.
+    function vaultExists(address user) external view returns(bool) {
+        return UsersVault[user].exists;
     }
 
     /// @notice Get the SGX token address.
@@ -399,11 +450,5 @@ contract VaultFactory is Ownable {
     /// @notice Get the gSGX token address.
     function getGSGXAddress() external view returns (address) {
         return address(gSGX);
-    }
-
-    /// @notice Check if vault exists.
-    /// @param user address, User we are checking the vault.
-    function vaultExists(address user) external view returns(bool) {
-        return UsersVault[user].exists;
     }
 }

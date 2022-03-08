@@ -55,13 +55,12 @@ contract VaultFactoryTest is DSTest {
         assertEq(address(vault.SGX()), address(SGX)); 
         assertEq(vault.Treasury(), Treasury); 
         assertEq(vault.MinVaultDeposit(), 1e18); 
-        assertEq(vault.interestRate(), 1e17);
+        assertEq(vault.InterestRate(), 1e17);
     }
     
     function testCreateVault() public {
         ERC20User user = new ERC20User(SGX);
         uint256 amount = 200e18;
-        bool created; 
         uint256 lastClaimTime;
         uint256 pendingRewards;
         uint256 balance;
@@ -80,11 +79,10 @@ contract VaultFactoryTest is DSTest {
         hevm.startPrank(address(user));
         vault.createVault(amount);
 
-        (created, lastClaimTime, pendingRewards, balance) = vault.getVaultInfo();
+        (lastClaimTime, pendingRewards, balance) = vault.getVaultInfo(address(user));
 
         assertEq(vault.TotalNetworkVaults(), 1);
         assertEq(SGX.balanceOf(Treasury), amount);
-        assertTrue(created);
         assertEq(balance, amount);
         assertEq(SGX.balanceOf(address(user)), balanceBefore - amount);
 
@@ -109,7 +107,7 @@ contract VaultFactoryTest is DSTest {
         // 3. Impersonate user
         vault.createVault(deposit);
         
-        ( , , , balance) = vault.getVaultInfo();
+        ( , , balance) = vault.getVaultInfo(msg.sender);
 
         uint256 currentBalance = balanceBefore - deposit;
 
@@ -117,7 +115,7 @@ contract VaultFactoryTest is DSTest {
 
         vault.depositInVault(deposit); 
         
-        ( , , , balance2) = vault.getVaultInfo();
+        ( , , balance2) = vault.getVaultInfo(msg.sender);
         
         uint256 expectedRewards = 273972602739726;
 
@@ -152,7 +150,7 @@ contract VaultFactoryTest is DSTest {
         vault.createVault(deposit);
 
         hevm.prank(msg.sender);
-        ( , , , balance) = vault.getVaultInfo();
+        ( , , balance) = vault.getVaultInfo(msg.sender);
 
         uint256 userSGXBalance = amount - deposit;
         
@@ -182,7 +180,7 @@ contract VaultFactoryTest is DSTest {
         SGX.approve(address(lockup), type(uint256).max);
 
         hevm.prank(msg.sender);
-        vault.claimRewards();
+        vault.claimRewards(msg.sender);
          
         hevm.prank(msg.sender);
         assertEq(SGX.balanceOf(msg.sender), result);

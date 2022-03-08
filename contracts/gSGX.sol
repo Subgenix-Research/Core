@@ -137,10 +137,14 @@ contract gSGX is ERC20, Ownable {
                             VIEW FUNCTIONS 
     ///////////////////////////////////////////////////////////////*/
 
-    /// @notice Get the balance of SGX locked in this contract.
-    /// @return The balance of SGX locked in this contract.
+    /// @notice Get the total amount of SGX locked in this contract.
+    /// @return The amount of SGX locked in this contract.
     function sgxBalance() public view returns(uint256) {
         return SGX.balanceOf(address(this));
+    }
+
+    function gSGXBalance(address user) external view returns(uint256) {
+        return balanceOf[user];
     }
 
 }
