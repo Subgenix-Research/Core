@@ -167,12 +167,6 @@ contract VaultFactoryTest is DSTest {
         uint256 gSGXDistributed = vault.calculatePercentage(reward, vault.GSGXDistributed());
         uint256 gSGXPercentage = vault.calculatePercentage(reward, vault.GSGXPercent());
 
-        emit log_uint(burnAmount);
-        emit log_uint(lockup7);
-        emit log_uint(lockup18);
-        emit log_uint(gSGXDistributed);
-        emit log_uint(gSGXPercentage);
-        
         reward -= burnAmount;
         reward -= lockup7;
         reward -= lockup18;
@@ -200,7 +194,39 @@ contract VaultFactoryTest is DSTest {
     }
 
 
-    /*///////////////////////////////////////////////////////////////
-                              FUZZ-TESTING
-    //////////////////////////////////////////////////////////////*/
+    function testGetGSGXDominance() public {
+        // *---- Create and deposit in vault ----* //
+        uint256 amount = 10e18;
+        uint256 deposit = 1e18;
+        uint256 balance;
+        uint256 vesting;
+        uint256 lastClaimTime;
+
+
+        //emit log_named_address("Sender: ", msg.sender);
+        // 1. Mint token to account.
+        SGX.mint(msg.sender, amount);
+        uint256 balanceBefore = SGX.balanceOf(msg.sender);
+
+        // 2. Approve this address to spend impersonated account tokens.
+        hevm.prank(msg.sender);
+        SGX.approve(address(vault), amount);
+         
+        // 3. Impersonate user. 
+        hevm.prank(msg.sender);
+        vault.createVault(deposit);
+
+
+        hevm.warp(block.timestamp + 365 days); // Should receive 10% rewards.
+
+        // Approve
+        hevm.prank(msg.sender);
+        SGX.approve(address(lockup), type(uint256).max);
+
+        hevm.prank(msg.sender);
+        vault.claimRewards(msg.sender);
+
+        uint256 dominance = vault.getGSGXDominance();
+        emit log_uint(dominance);
+    }
 }

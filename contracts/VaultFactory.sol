@@ -487,4 +487,10 @@ contract VaultFactory is Ownable {
     function getGSGXAddress() external view returns (address) {
         return address(gSGX);
     }
+
+    function getGSGXDominance() external view returns (uint256) {
+        require(SGX.totalSupply() > 0, "not enough SGX.");
+
+        return (SGX.balanceOf(address(gSGX)) * scale) / SGX.totalSupply();
+    }
 }

@@ -3,29 +3,10 @@ async function main() {
     const [owner] = await ethers.getSigners();
 
     const VaultFactory = await ethers.getContractFactory("VaultFactory");
-    const vault = await VaultFactory.attach("0x34ac46B89044FD0b0112F39256609Af3e86Fd309");
+    const vault = await VaultFactory.attach("0xb1AEa43C97f379AA5587bf4f37b7F464E8bb5B10");
 
-    // 1. Call function.
-    const [
-        immediateRewards, 
-        burnAmount, 
-        shortLockup, 
-        longLockup, 
-        gSGXPercent, 
-        gSGXToContract
-    ] = await vault.viewPendingRewards(owner.address);
+
     
-    // 2. Pending Rewards
-    const pendingRewards = immediateRewards.toNumber() + shortLockup.toNumber() + longLockup.toNumber();
-
-    // --------- REWARDS OVERVIEW ----------
-    // |-----------------|-----------------|
-    // | immediateRewards| gSGXPercent     |
-    // |-----------------|-----------------|
-    // | shortLockup     | longLockup      |
-    // |-----------------|-----------------|
-    // | burnAmount      | gSGXToContract  |
-    // |-----------------|-----------------|
 }
 
 main()
