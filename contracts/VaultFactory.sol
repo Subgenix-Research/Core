@@ -180,7 +180,7 @@ contract VaultFactory is Ownable {
 
         uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
 
-        uint256 interest = (userVault.balance * rewardsPercent) / reward_granularity;
+        uint256 interest = (userVault.balance * rewardsPercent) / scale;
 
         // Update user's vault info
         userVault.lastClaimTime = block.timestamp;
@@ -210,12 +210,12 @@ contract VaultFactory is Ownable {
 
         uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
 
-        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / reward_granularity) + userVault.pendingRewards;
+        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / scale) + userVault.pendingRewards;
 
         distributeRewards(claimableRewards,  user);
 
         // Calculate liquidateVaultPercent of user's vault balance.
-        uint256 sgxPercent = (userVault.balance * LiquidateVaultPercent) / reward_granularity;
+        uint256 sgxPercent = (userVault.balance * LiquidateVaultPercent) / scale;
 
         // Delete user vault.
         userVault.exists = false;
@@ -255,8 +255,8 @@ contract VaultFactory is Ownable {
     /// @notice Interest rate (per `baseTime`) i.e. 1e17 = 10% / `baseTime`
     uint256 public InterestRate;
 
-    /// @notice the level of reward granularity 
-    uint256 public constant reward_granularity = 1e18;
+    /// @notice the level of reward granularity, WAD
+    uint256 public constant scale = 1e18;
 
     /// @notice Base time used to calculate rewards.
     uint32 public constant baseTime = 365 days;
@@ -281,11 +281,11 @@ contract VaultFactory is Ownable {
 
         uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
-        require(timeElapsed >= 24 hours, "To early to claim rewards.");
+        //require(timeElapsed >= 24 hours, "To early to claim rewards.");
 
         uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
 
-        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / reward_granularity) + userVault.pendingRewards;
+        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / scale) + userVault.pendingRewards;
 
         // Update user's vault info
         userVault.lastClaimTime = block.timestamp;
@@ -306,25 +306,27 @@ contract VaultFactory is Ownable {
         (uint256 burnAmount, 
          uint256 shortLockup, 
          uint256 longLockup,
-         uint256 gSGXPercentage,
-         uint256 gSGXPercentageDistributed) = calculateDistribution(claimableRewards); 
+         uint256 gSGXPercent,
+         uint256 gSGXToContract) = calculateDistribution(claimableRewards); 
         
         claimableRewards -= burnAmount;
 
-        claimableRewards -= gSGXPercentage;
+        claimableRewards -= gSGXPercent;
 
-        claimableRewards -= gSGXPercentageDistributed;
+        claimableRewards -= gSGXToContract;
 
         SGX.mint(address(this), mintAmount);
 
         SGX.burn(address(this), burnAmount); // Burn token
 
         // Convert to gSGX and send to ser.
-        SGX.approve(address(gSGX), gSGXPercentage);
-        gSGX.deposit(gSGXPercentage);
+        SGX.approve(address(gSGX), gSGXPercent);
+        gSGX.deposit(gSGXPercent);
 
         // send to gSGX Contract
-        SGX.transfer(address(gSGX), gSGXPercentageDistributed);
+        SGX.transfer(address(gSGX), gSGXToContract);
+
+        // TODO Change this.
 
         SGX.transfer(user, claimableRewards); // Transfer token to users.
         
@@ -338,56 +340,80 @@ contract VaultFactory is Ownable {
     uint256 burnAmount, 
     uint256 shortLockup, 
     uint256 longLockup,
-    uint256 gSGXPercentage,
-    uint256 gSGXPercentageDistribtued
+    uint256 gSGXPercent,
+    uint256 gSGXToContract
     ) {
+
         burnAmount = calculatePercentage(rewards, BurnPercent);
         shortLockup = calculatePercentage(rewards, ILockupHell(Lockup).getShortPercentage());
         longLockup = calculatePercentage(rewards, ILockupHell(Lockup).getLongPercentage());
-        gSGXPercentage = calculatePercentage(rewards, GSGXPercent);
-        gSGXPercentageDistribtued = calculatePercentage(rewards, GSGXDistributed);
+        gSGXPercent = calculatePercentage(rewards, GSGXPercent);
+        gSGXToContract = calculatePercentage(rewards, GSGXDistributed);
     } 
 
     /// @notice Calculates X's percentage based on rewards amount.
-    /// @param rewards uint256, the amount the percentage is being calculated on top off.
-    /// @param variable uint256, the percentage being calculated. 
+    ///         E.g. x = 1e17, y = 2e16, scale = 1e18
+    ///              if scale == 100%, then x == 10% and y == 2%
+    ///              Then the question is, what is 2% of 1e17?
+    ///
+    ///              ((1e17 * 2e16) / 1e18) --> (2e33 / 1e18) --> 2e15
+    ///
+    ///              This is what we are doing in this formula.
+    /// TODO: FIX possible phantom overflow.
+    /// @dev We are performing a mulDiv operation, rounding down.
+    /// @param x uint256, the rewards.
+    /// @param y uint256, the percentage being calculated.
+    /// @return z uint256, the final value x based on the percetage y.
     function calculatePercentage(
-        uint256 rewards, 
-        uint256 variable
-    ) public pure returns (uint256 percentage) {
-        percentage = (rewards * variable) / reward_granularity; 
+        uint256 x, 
+        uint256 y
+    ) public pure returns (uint256 z) {
+        
+        z = (x * y) / scale;
     }
 
     /// @notice Checks how much reward the User can get if he claim rewards.
     /// @param user address, who we are checking the pending rewards.
-    /// @return Amount of rewards in SGX user will receive with taking into 
-    ///         consideration the lockups.
-    function viewPendingRewards(address user) external view returns(uint256) {
+    /// @return immediateRewards uint256, rewards the user will immediately receive.
+    /// @return burnAmount       uint256, the amount of rewards that will be burned.
+    /// @return shortLockup      uint256, the amount of rewards that will be locked up for a short period.
+    /// @return longLockup       uint256, the amount of rewards that will be locked up for a long period.
+    /// @return gSGXPercent      uint256, the amount of gSGX the user will receive.
+    /// @return gSGXToContract   uint256, the amount of gSGX sent to the gSGX contract.
+    function viewPendingRewards(address user) external view returns(uint256, uint256, uint256, uint256, uint256, uint256) {
         Vault memory userVault = UsersVault[user];
         require(userVault.exists == true, "You don't have a vault.");
-        
+
         uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
         uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
 
-        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / reward_granularity) + userVault.pendingRewards;
+        uint256 immediateRewards = ((userVault.balance * rewardsPercent) / scale) + userVault.pendingRewards;
 
-        (uint256 burnAmount, 
-          , // Short lockup
-          , // Long lockup
-         uint256 gSGXPercentage,
-         uint256 gSGXPercentageDistributed) = calculateDistribution(claimableRewards); 
-        
+        (uint256 burnAmount,
+         uint256 shortLockup,
+         uint256 longLockup,
+         uint256 gSGXPercent,
+         uint256 gSGXToContract) = calculateDistribution(immediateRewards);
+
         // Amount burned.
-        claimableRewards -= burnAmount;
+        immediateRewards -= burnAmount;
 
         // Amount converted to gSGX and sent to user.
-        claimableRewards -= gSGXPercentage; 
+        immediateRewards -= gSGXPercent; 
 
         // Amount sent to gSGX contract.
-        claimableRewards -= gSGXPercentageDistributed;
+        immediateRewards -= gSGXToContract;
 
-        return claimableRewards;
+        // Amount to be locked up for a short period.
+        immediateRewards -= shortLockup;
+
+        // Amount to be locked up for a long period.
+        immediateRewards -= longLockup;
+
+        // The final result of the immediateRewards is what the user will recieve in his wallet.
+
+        return (immediateRewards, burnAmount, shortLockup, longLockup, gSGXPercent, gSGXToContract);
     }
 
     /*///////////////////////////////////////////////////////////////

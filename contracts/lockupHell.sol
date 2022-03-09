@@ -59,8 +59,8 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     struct Rates {
         uint32 shortLockupTime; // Shorter lockup period, i.e 07 days.
         uint32 longLockupTime;  // Longer lockup period, i.e 18 days.
-        uint32 shortPercentage; // % of rewards locked up with a shorter period, defined in thousands i.e 1800 = 18%.
-        uint32 longPercentage;  // % of rewards locked up with a longer period, defined in thousands i.e. 1200 = 12%.
+        uint256 shortPercentage; // % of rewards locked up with a shorter period, defined in thousands i.e 18e16 = 18%.
+        uint256 longPercentage;  // % of rewards locked up with a longer period, defined in thousands i.e. 12e16 = 12%.
     } 
 
     /// @notice Information about each `Lockup` the user has.
@@ -242,13 +242,13 @@ contract LockUpHell is Ownable, ReentrancyGuard {
 
     /// @notice Allow the user to know what the `shortPercentage` variable is set to.
     /// @return uint32, the value the `shortPercentage` variable is set to in thousands i.e. 1200 = 12%.
-    function getShortPercentage() public view returns(uint32) {
+    function getShortPercentage() public view returns(uint256) {
         return rates.shortPercentage;
     }
     
     /// @notice Allow the user to know what the `longPercentage` variable is set to.
     /// @return uint32, the value the `longPercentage` variable is set to in thousands i.e. 1800 = 12%.
-    function getLongPercentage() public view returns(uint32) { 
+    function getLongPercentage() public view returns(uint256) { 
         return rates.longPercentage;
     }
 
@@ -274,14 +274,14 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     /// @notice Allows the owner of the contract change the % of the rewards that are
     ///         going to be locked up for a short period of time.
     /// @dev Allows the owner of the contract to change the `shortPercentage` value.    
-    function setShortPercentage(uint32 value) external onlyOwner {
+    function setShortPercentage(uint256 value) external onlyOwner {
         rates.shortPercentage = value;
     }
     
     /// @notice Allows the owner of the contract change the % of the rewards that are
     ///         going to be locked up for a long period of time.
     /// @dev Allows the owner of the contract to change the `long` value.
-    function setLongPercentage(uint32 value) external onlyOwner { 
+    function setLongPercentage(uint256 value) external onlyOwner { 
         rates.longPercentage = value;
     }
 }

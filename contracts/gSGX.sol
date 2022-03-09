@@ -142,9 +142,4 @@ contract gSGX is ERC20, Ownable {
     function sgxBalance() public view returns(uint256) {
         return SGX.balanceOf(address(this));
     }
-
-    function gSGXBalance(address user) external view returns(uint256) {
-        return balanceOf[user];
-    }
-
 }
