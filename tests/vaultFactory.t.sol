@@ -6,6 +6,7 @@ import {Subgenix} from "../contracts/Subgenix.sol";
 import {ERC20User} from "./utils/users/ERC20User.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
 import {LockUpHell} from "../contracts/lockupHell.sol";
+import {FullMath} from "../contracts/utils/FullMath.sol";
 import {Hevm} from "./utils/Hevm.sol";
 import {gSGX} from "../contracts/gSGX.sol";
 
@@ -17,6 +18,8 @@ contract VaultFactoryTest is DSTest {
     Subgenix SGX;
     gSGX GSGX;
     address Treasury = address(0xBEEF);
+
+    using FullMath for uint256;
 
     function setUp() public {
         SGX = new Subgenix("Subgenix Currency", "SGX", 18);
@@ -162,11 +165,11 @@ contract VaultFactoryTest is DSTest {
         hevm.warp(block.timestamp + 365 days); // Should receive 10% rewards.
 
         uint256 reward = 1e17; // 10%
-        uint256 burnAmount = vault.calculatePercentage(reward, vault.BurnPercent()); 
-        uint256 lockup7    = vault.calculatePercentage(reward, lockup.getShortPercentage()); 
-        uint256 lockup18   = vault.calculatePercentage(reward, lockup.getLongPercentage()); 
-        uint256 gSGXDistributed = vault.calculatePercentage(reward, vault.GSGXDistributed());
-        uint256 gSGXPercentage = vault.calculatePercentage(reward, vault.GSGXPercent());
+        uint256 burnAmount = reward.mulDiv(vault.BurnPercent(), 1e18); 
+        uint256 lockup7    = reward.mulDiv(lockup.getShortPercentage(), 1e18); 
+        uint256 lockup18   = reward.mulDiv(lockup.getLongPercentage(), 1e18); 
+        uint256 gSGXDistributed = reward.mulDiv(vault.GSGXDistributed(), 1e18);
+        uint256 gSGXPercentage = reward.mulDiv(vault.GSGXPercent(), 1e18);
 
         reward -= burnAmount;
         reward -= lockup7;

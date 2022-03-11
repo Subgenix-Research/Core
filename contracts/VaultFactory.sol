@@ -3,6 +3,7 @@ pragma solidity >=0.8.0 < 0.9.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ILockupHell} from "./interfaces/ILockupHell.sol";
+import {FullMath} from "./utils/FullMath.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IgSGX} from "./interfaces/IgSGX.sol";
 
@@ -10,6 +11,8 @@ import {IgSGX} from "./interfaces/IgSGX.sol";
 /// @author Subgenix Research.
 /// @notice The VaultFactory contract creates and manages user's vaults.
 contract VaultFactory is Ownable {
+
+    using FullMath for uint256;
     
     /*///////////////////////////////////////////////////////////////
                                 METADATA
@@ -322,9 +325,9 @@ contract VaultFactory is Ownable {
 
         //require(timeElapsed >= 24 hours, "To early to claim rewards.");
 
-        uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
+        uint256 rewardsPercent = timeElapsed.mulDiv(InterestRate, baseTime);
 
-        uint256 claimableRewards = ((userVault.balance * rewardsPercent) / scale) + userVault.pendingRewards;
+        uint256 claimableRewards = (userVault.balance).mulDiv( rewardsPercent, scale) + userVault.pendingRewards;
 
         // Update user's vault info
         userVault.lastClaimTime = block.timestamp;
@@ -383,33 +386,13 @@ contract VaultFactory is Ownable {
     uint256 gSGXToContract
     ) {
 
-        burnAmount = calculatePercentage(rewards, BurnPercent);
-        shortLockup = calculatePercentage(rewards, ILockupHell(Lockup).getShortPercentage());
-        longLockup = calculatePercentage(rewards, ILockupHell(Lockup).getLongPercentage());
-        gSGXPercent = calculatePercentage(rewards, GSGXPercent);
-        gSGXToContract = calculatePercentage(rewards, GSGXDistributed);
+        burnAmount = rewards.mulDiv(BurnPercent, scale);
+        shortLockup = rewards.mulDiv(ILockupHell(Lockup).getShortPercentage(), scale);
+        longLockup = rewards.mulDiv(ILockupHell(Lockup).getLongPercentage(), scale);
+        gSGXPercent = rewards.mulDiv(GSGXPercent, scale);
+        gSGXToContract = rewards.mulDiv(GSGXDistributed, scale);
     } 
 
-    /// @notice Calculates X's percentage based on rewards amount.
-    ///         E.g. x = 1e17, y = 2e16, scale = 1e18
-    ///              if scale == 100%, then x == 10% and y == 2%
-    ///              Then the question is, what is 2% of 1e17?
-    ///
-    ///              ((1e17 * 2e16) / 1e18) --> (2e33 / 1e18) --> 2e15
-    ///
-    ///              This is what we are doing in this formula.
-    /// TODO: FIX possible phantom overflow.
-    /// @dev We are performing a mulDiv operation, rounding down.
-    /// @param x uint256, the rewards.
-    /// @param y uint256, the percentage being calculated.
-    /// @return z uint256, the final value x based on the percetage y.
-    function calculatePercentage(
-        uint256 x, 
-        uint256 y
-    ) public pure returns (uint256 z) {
-        
-        z = (x * y) / scale;
-    }
 
     /// @notice Checks how much reward the User can get if he claim rewards.
     /// @param user address, who we are checking the pending rewards.
@@ -420,9 +403,9 @@ contract VaultFactory is Ownable {
 
         uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
-        uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
+        uint256 rewardsPercent = timeElapsed.mulDiv(InterestRate, baseTime);
 
-        uint256 pendingRewards = ((userVault.balance * rewardsPercent) / scale) + userVault.pendingRewards;
+        uint256 pendingRewards = (userVault.balance).mulDiv( rewardsPercent, scale) + userVault.pendingRewards;
 
         (uint256 burnAmount,
          uint256 shortLockup,
