@@ -24,12 +24,12 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     /// @notice Emitted when short lockup rewards are unlocked.
     /// @param user address, Owner of the rewards that are being unlocked.
     /// @param shortRewards uint256, amount of rewards unlocked.
-    event unlockShortLockupPeriod(address indexed user, uint256 shortRewards);
+    event unlockShortLockup(address indexed user, uint256 shortRewards);
     
     /// @notice Emitted when long lockup rewards are unlocked.
     /// @param user address, Owner of the rewards that are being unlocked.
     /// @param longRewards uint256, amount of rewards unlocked.
-    event unlockLongLockupPeriod(address indexed user, uint256 longRewards);
+    event unlockLongLockup(address indexed user, uint256 longRewards);
 
     /// @notice Emitted when the owner of the contrct changes the shorter lockup time period.
     /// @param value uint32, the new value of the shorter lockup time period.
@@ -57,20 +57,20 @@ contract LockUpHell is Ownable, ReentrancyGuard {
 
     /// @notice Global rates defined by the owner of the contract.
     struct Rates {
-        uint32 shortLockupTime; // Shorter lockup period, i.e 07 days.
-        uint32 longLockupTime;  // Longer lockup period, i.e 18 days.
+        uint32 shortLockupTime;  // Shorter lockup period, i.e 07 days.
+        uint32 longLockupTime;   // Longer lockup period, i.e 18 days.
         uint256 shortPercentage; // % of rewards locked up with a shorter period, defined in thousands i.e 18e16 = 18%.
         uint256 longPercentage;  // % of rewards locked up with a longer period, defined in thousands i.e. 12e16 = 12%.
     } 
 
     /// @notice Information about each `Lockup` the user has.
     struct Lockup {
-        bool longRewardsColected;  // True if user colected long rewards, false otherwise.
-        bool shortRewardsColected; // True if user colected short rewards, false otherwise.
-        uint32 longLockupPeriod;   // Time (in Unit time stamp) in the future when long lockup rewards will be unlocked.
-        uint32 shortLockupPeriod;  // Time (in Unit time stamp) in the future when short lockup rewards will be unlocked.
-        uint256 longRewards;       // The amount of rewards available to the user after longLockupPeriod.
-        uint256 shortRewards;      // The amount of rewards available to the user after shortLockupPeriod.
+        bool longRewardsCollected;    // True if user collected long rewards, false otherwise.
+        bool shortRewardsCollected;   // True if user collected short rewards, false otherwise.
+        uint32 longLockupUnlockDate;  // Time (in Unit time stamp) in the future when long lockup rewards will be unlocked.
+        uint32 shortLockupUnlockDate; // Time (in Unit time stamp) in the future when short lockup rewards will be unlocked.
+        uint256 longRewards;          // The amount of rewards available to the user after longLockupUnlockDate.
+        uint256 shortRewards;         // The amount of rewards available to the user after shortLockupUnlockDate.
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -80,6 +80,9 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     /// @notice A mapping for each user's lockup i.e. `UsersLockup[msg.sender][index]`
     ///         where the `index` refers to which lockup the user wants to look at.
     mapping(address => mapping(uint32 => Lockup)) public UsersLockup;
+
+    /// @notice A mapping for the total locked from each user.
+    mapping(address => uint256) public UsersTotalLocked;
     
     /// @notice A mapping to check the total of `lockup's` each user has. It can be seen like this:
     ///         `UsersLockup[msg.sender][index]` where `index` <= `UsersLockupLength[msg.sender]`.
@@ -128,13 +131,16 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         uint32 index = userLockups+1;
         UsersLockupLength[user] = index;
 
+        // Add the total value of lockup rewards to the users mapping.
+        UsersTotalLocked[user] += (shortLockupRewards + longLockupRewards);
+
         // Creates a new Lockup and add it to the new index location
         // of the UsersLockup mapping.
         UsersLockup[user][index] = Lockup({
-                longRewardsColected: false,
-                shortRewardsColected: false,
-                longLockupPeriod: uint32(block.timestamp) + rates.longLockupTime,
-                shortLockupPeriod: uint32(block.timestamp) + rates.shortLockupTime,
+                longRewardsCollected: false,
+                shortRewardsCollected: false,
+                longLockupUnlockDate: uint32(block.timestamp) + rates.longLockupTime,
+                shortLockupUnlockDate: uint32(block.timestamp) + rates.shortLockupTime,
                 longRewards: longLockupRewards,
                 shortRewards: shortLockupRewards
             });
@@ -151,77 +157,87 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     /// @notice After the shorter lockup period is over, user can claim his rewards using this function.
     /// @dev Function called from the UI to allow user to claim his rewards. We use the 'nonReentrant' modifier
     ///      from the `ReentrancyGuard` made by openZeppelin as an extra layer of protection against Reentrancy Attacks.
+    /// @param user address, the user who is claiming rewards. 
     /// @param index uint32, the index of the `lockup` the user is refering to.
-    function claimShortLockup(uint32 index) external nonReentrant {
+    function claimShortLockup(address user, uint32 index) external nonReentrant {
         // There are 3 requirements that must be true before the user can claim his
         // short lockup rewards:
         //
         // 1. The index of the 'lockup' the user is refering to must be a valid one.
-        // 2. The `shortRewardsColected` variable from the 'lockup' must be false, proving
+        // 2. The `shortRewardsCollected` variable from the 'lockup' must be false, proving
         //    the user didn't collect his rewards yet.
         // 3. The block.timestamp must be greater than the short lockup period proposed
         //    when the rewards were first locked.
         //
         // If all three are true, the user can safely colect their short lockup rewards.
-        require(UsersLockupLength[msg.sender] >= index, "Index invalid");
-        require(UsersLockup[msg.sender][index].shortRewardsColected == false, "Already claimed.");
-        require(block.timestamp > UsersLockup[msg.sender][index].shortLockupPeriod, "Too early to claim.");
+        require(UsersLockupLength[user] >= index, "Index invalid");
+        require(UsersLockup[user][index].shortRewardsCollected == false, "Already claimed.");
+        require(block.timestamp > UsersLockup[user][index].shortLockupUnlockDate, "Too early to claim.");
+        require(msg.sender == user, "You can only claim your own rewards.");
 
         // Make a temporary copy of the user `lockup` and get the short lockup rewards amount.
-        Lockup memory temp = UsersLockup[msg.sender][index];
+        Lockup memory temp = UsersLockup[user][index];
         uint256 amount = temp.shortRewards;
         
-        // Updates status of the shortRewardsColected to true,
-        // and changes the shortRewards to be colected to zero.
-        temp.shortRewardsColected = true;
+        // Updates status of the shortRewardsCollected to true,
+        // and changes the shortRewards to be collected to zero.
+        temp.shortRewardsCollected = true;
         temp.shortRewards = 0;
 
         // Updates the users lockup with the one that was
         // temporarily created.
-        UsersLockup[msg.sender][index] = temp;
-        
+        UsersLockup[user][index] = temp;
+
+        // Takes the amount being transfered out of users total locked mapping.
+        UsersTotalLocked[user] -= amount;
+
         // Transfer the short rewards amount to user.
-        IERC20(SGX).transfer(msg.sender, amount);
+        IERC20(SGX).transfer(user, amount);
         
-        emit unlockShortLockupPeriod(msg.sender, amount);
+        emit unlockShortLockup(user, amount);
     }
 
     /// @notice After the longer lockup period is over, user can claim his rewards using this function.
     /// @dev Function called from the UI to allow user to claim his rewards. We use the 'nonReentrant' modifier
     ///      from the `ReentrancyGuard` made by openZeppelin as an extra layer of protection against Reentrancy Attacks.
+    /// @param user address, the user who is claiming rewards.
     /// @param index uint32, he index of the `lockup` the user is refering to.
-    function claimLongLockup(uint32 index) external nonReentrant {
+    function claimLongLockup(address user, uint32 index) external nonReentrant {
         // There are 3 requirements that must be true before the user can claim his
         // long lockup rewards:
         //
         // 1. The index of the 'lockup' the user is refering to must be a valid one.
-        // 2. The `longRewardsColected` variable from the 'lockup' must be false, proving
+        // 2. The `longRewardsCollected` variable from the 'lockup' must be false, proving
         //    the user didn't collect his rewards yet.
         // 3. The block.timestamp must be greater than the long lockup period proposed
         //    when the rewards were first locked.
         //
         // If all three are true, the user can safely colect their long lockup rewards.
-        require(UsersLockupLength[msg.sender] >= index, "Index invalid");
-        require(UsersLockup[msg.sender][index].longRewardsColected == false, "Already claimed.");
-        require(block.timestamp > UsersLockup[msg.sender][index].longLockupPeriod, "Too early to claim.");
+        require(UsersLockupLength[user] >= index, "Index invalid");
+        require(UsersLockup[user][index].longRewardsCollected == false, "Already claimed.");
+        require(block.timestamp > UsersLockup[user][index].longLockupUnlockDate, "Too early to claim.");
+        require(msg.sender == user, "You can only claim your own rewards.");
 
         // Make a temporary copy of the user `lockup` and get the long lockup rewards amount.
-        Lockup memory temp = UsersLockup[msg.sender][index];
+        Lockup memory temp = UsersLockup[user][index];
         uint256 amount = temp.longRewards;
         
-        // Updates status of the longRewardsColected to true,
-        // and changes the longRewards to be colected to zero.
-        temp.longRewardsColected = true;
+        // Updates status of the longRewardsCollected to true,
+        // and changes the longRewards to be collected to zero.
+        temp.longRewardsCollected = true;
         temp.longRewards = 0;
 
         // Updates the users lockup with the one that was
         // temporarily created.
-        UsersLockup[msg.sender][index] = temp;
+        UsersLockup[user][index] = temp;
+
+        // Takes the amount being transfered out of users total locked mapping.
+        UsersTotalLocked[user] -= amount;
         
         // Transfer the long rewards amount to user.
-        IERC20(SGX).transfer(msg.sender, amount);
+        IERC20(SGX).transfer(user, amount);
         
-        emit unlockLongLockupPeriod(msg.sender, amount);
+        emit unlockLongLockup(user, amount);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -230,28 +246,27 @@ contract LockUpHell is Ownable, ReentrancyGuard {
 
     /// @notice Allow the user to check how long `shortLockupTime` is set to.
     /// @return uint32, the value `shortLockupTime` is set to.
-    function getShortLockupTime() public view returns(uint32) {
+    function getShortLockupTime() external view returns(uint32) {
         return rates.shortLockupTime;
     }
     
     /// @notice Allow the user to check how long `longLockupTime` is set to.
     /// @return uint32, the value `longLockupTime` is set to.
-    function getLongLockupTime() public view returns(uint32) { 
+    function getLongLockupTime() external view returns(uint32) { 
         return rates.longLockupTime;
     }
 
     /// @notice Allow the user to know what the `shortPercentage` variable is set to.
     /// @return uint32, the value the `shortPercentage` variable is set to in thousands i.e. 1200 = 12%.
-    function getShortPercentage() public view returns(uint256) {
+    function getShortPercentage() external view returns(uint256) {
         return rates.shortPercentage;
     }
-    
+
     /// @notice Allow the user to know what the `longPercentage` variable is set to.
     /// @return uint32, the value the `longPercentage` variable is set to in thousands i.e. 1800 = 12%.
-    function getLongPercentage() public view returns(uint256) { 
+    function getLongPercentage() external view returns(uint256) { 
         return rates.longPercentage;
     }
-
 
     /*///////////////////////////////////////////////////////////////
                                 ONLY OWNER

@@ -64,6 +64,7 @@ contract VaultFactoryTest is DSTest {
         uint256 lastClaimTime;
         uint256 pendingRewards;
         uint256 balance;
+        VaultFactory.VaultLeague league;
         
         assertEq(vault.TotalNetworkVaults(), 0);
  
@@ -79,7 +80,7 @@ contract VaultFactoryTest is DSTest {
         hevm.startPrank(address(user));
         vault.createVault(amount);
 
-        (lastClaimTime, pendingRewards, balance) = vault.getVaultInfo(address(user));
+        (lastClaimTime, pendingRewards, balance, league) = vault.getVaultInfo(address(user));
 
         assertEq(vault.TotalNetworkVaults(), 1);
         assertEq(SGX.balanceOf(Treasury), amount);
@@ -107,7 +108,7 @@ contract VaultFactoryTest is DSTest {
         // 3. Impersonate user
         vault.createVault(deposit);
         
-        ( , , balance) = vault.getVaultInfo(msg.sender);
+        ( , , balance, ) = vault.getVaultInfo(msg.sender);
 
         uint256 currentBalance = balanceBefore - deposit;
 
@@ -115,7 +116,7 @@ contract VaultFactoryTest is DSTest {
 
         vault.depositInVault(deposit); 
         
-        ( , , balance2) = vault.getVaultInfo(msg.sender);
+        ( , , balance2, ) = vault.getVaultInfo(msg.sender);
         
         uint256 expectedRewards = 273972602739726;
 
@@ -150,7 +151,7 @@ contract VaultFactoryTest is DSTest {
         vault.createVault(deposit);
 
         hevm.prank(msg.sender);
-        ( , , balance) = vault.getVaultInfo(msg.sender);
+        ( , , balance, ) = vault.getVaultInfo(msg.sender);
 
         uint256 userSGXBalance = amount - deposit;
         
@@ -189,11 +190,6 @@ contract VaultFactoryTest is DSTest {
 
     // TEST VIEW FUNCTIONS
 
-    function testGetSGXAddress() public {
-        assertEq(vault.getSGXAddress(), address(vault.SGX()));
-    }
-
-
     function testGetGSGXDominance() public {
         // *---- Create and deposit in vault ----* //
         uint256 amount = 10e18;
@@ -227,6 +223,7 @@ contract VaultFactoryTest is DSTest {
         vault.claimRewards(msg.sender);
 
         uint256 dominance = vault.getGSGXDominance();
+
         emit log_uint(dominance);
     }
 }

@@ -40,15 +40,15 @@ contract LockUpHellTest is DSTest {
             address(lockup)    // Lockup contract.
         );
 
-        lockup.setLongPercentage(1800);    // Percentage to be locked up for 18 days, 1800 = 18%
-        lockup.setShortPercentage(1200);   // Percentage to be locked up for 07 days, 1200 = 12%
+        lockup.setLongPercentage(18e16);    // Percentage to be locked up for 18 days, 18e16 = 18%.
+        lockup.setShortPercentage(12e16);   // Percentage to be locked up for 07 days, 12e16 = 12%.
         lockup.setLongLockupTime(18 days); // 18 days in seconds
         lockup.setShortLockupTime(7 days); // 07 days in seconds
 
         vault.setInterestRate(1e16);      // Daily rewards, 1e16 = 1%
-        vault.setBurnPercent(200);         // Percentage burned when claiming rewards, 200 = 2%.
-        vault.setgSGXPercent(1300);        // Percentage of rewards converted to gSGX
-        vault.setgSGXDistributed(500);     // Percentage of rewards sent to the gSGX contract.
+        vault.setBurnPercent(2e16);         // Percentage burned when claiming rewards, 2e16 = 2%.
+        vault.setgSGXPercent(13e16);        // Percentage of rewards converted to gSGX 13e16 = 13%.
+        vault.setgSGXDistributed(5e16);     // Percentage of rewards sent to the gSGX contract. 5e16 = 5%.
         vault.setMinVaultDeposit(1e18);    // Minimum amount required to deposite in Vault.
 
         SGX.setManager(address(vault), true);
@@ -113,7 +113,7 @@ contract LockUpHellTest is DSTest {
         uint256 depositAmount = 10e18;
         SGX.mint(msg.sender, depositAmount);
         
-        hevm.startPrank(msg.sender); // Impersonate user
+        hevm.prank(msg.sender); // Impersonate user
         SGX.approve(address(lockup), depositAmount);
         
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
@@ -127,7 +127,8 @@ contract LockUpHellTest is DSTest {
 
         LockupType memory userLockup;
         
-        lockup.claimShortLockup(index);
+        hevm.prank(msg.sender); // Impersonate user
+        lockup.claimShortLockup(msg.sender, index);
 
         // Get lockup Info
         ( , 
@@ -161,7 +162,7 @@ contract LockUpHellTest is DSTest {
 
         LockupType memory userLockup;
         
-        lockup.claimLongLockup(index);
+        lockup.claimLongLockup(msg.sender, index);
 
         // Get lockup Info
         (userLockup.longRewardsColected, 
@@ -188,11 +189,11 @@ contract LockUpHellTest is DSTest {
     }
 
     function testGetLongPercentage() public {
-        assertEq(lockup.getLongPercentage(), 1800);
+        assertEq(lockup.getLongPercentage(), 18e16);
     }
 
     function testGetShortPercentage() public {
-        assertEq(lockup.getShortPercentage(), 1200);
+        assertEq(lockup.getShortPercentage(), 12e16);
     }
 
     // <----------------------------------------------------> //
@@ -205,19 +206,18 @@ contract LockUpHellTest is DSTest {
     }
 
     function testSetShortLockupTime() public {
-        uint32 value = 10 days;
         lockup.setShortLockupTime(10 days);
         assertEq(lockup.getShortLockupTime(), 10 days);
     }
 
     function testSetLongPercentage() public {
-        lockup.setLongPercentage(1200);
-        assertEq(lockup.getLongPercentage(), 1200);
+        lockup.setLongPercentage(12e16);
+        assertEq(lockup.getLongPercentage(), 12e16);
     }
 
     function testSetShortPercentage() public {
-        lockup.setShortPercentage(1000);
-        assertEq(lockup.getShortPercentage(), 1000);
+        lockup.setShortPercentage(10e16);
+        assertEq(lockup.getShortPercentage(), 10e16);
     }
 
     // <----------------------------------------------------> //
@@ -255,7 +255,7 @@ contract LockUpHellTest is DSTest {
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
         
-        lockup.claimShortLockup(2);
+        lockup.claimShortLockup(msg.sender, 2);
     }
 
     function testFailclaimShortLockupAlreadyClaimed() public {
@@ -274,10 +274,10 @@ contract LockUpHellTest is DSTest {
         LockupType memory userLockup;
         
         // Claim once.
-        lockup.claimShortLockup(index);
+        lockup.claimShortLockup(msg.sender, index);
 
         // Try to claim again.
-        lockup.claimShortLockup(index);
+        lockup.claimShortLockup(msg.sender, index);
     }
 
     function testFailclaimShortLockupTooEarly() public {
@@ -293,7 +293,7 @@ contract LockUpHellTest is DSTest {
 
         uint32 index = lockup.UsersLockupLength(msg.sender);
         
-        lockup.claimShortLockup(index);
+        lockup.claimShortLockup(msg.sender, index);
     }
 
     function testFailclaimLongLockupIndexInvalid() public {
@@ -307,7 +307,7 @@ contract LockUpHellTest is DSTest {
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
         
-        lockup.claimLongLockup(2);
+        lockup.claimLongLockup(msg.sender, 2);
     }
 
     function testFailclaimLongLockupAlreadyClaimed() public {
@@ -326,10 +326,10 @@ contract LockUpHellTest is DSTest {
         LockupType memory userLockup;
         
         // Claim once.
-        lockup.claimLongLockup(index);
+        lockup.claimLongLockup(msg.sender, index);
 
         // Try to claim again.
-        lockup.claimLongLockup(index);
+        lockup.claimLongLockup(msg.sender, index);
     }
 
     function testFailclaimLongLockupTooEarly() public {
@@ -345,6 +345,6 @@ contract LockUpHellTest is DSTest {
 
         uint32 index = lockup.UsersLockupLength(msg.sender);
         
-        lockup.claimLongLockup(index);
+        lockup.claimLongLockup(msg.sender, index);
     }
 }

@@ -3,6 +3,7 @@ cache/
 out/
 node_modules/
 artifacts/
+future/
 
 # Files
 .DS_Store

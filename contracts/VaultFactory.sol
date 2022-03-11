@@ -37,12 +37,22 @@ contract VaultFactory is Ownable {
                          VAULTS CONFIGURATION
     //////////////////////////////////////////////////////////////*/
     
+    // Vault Leagues.
+    enum VaultLeague {
+        league0,
+        league1,
+        league2,
+        league3,
+        league4
+    }
+
     // Vault's info.
     struct Vault {
         bool exists;            // vault exists.
         uint256 lastClaimTime;  // Last claim.
         uint256 pendingRewards; // All pending rewards.
-        uint256 balance;        // Total Deposited in the vault. 
+        uint256 balance;        // Total Deposited in the vault.
+        VaultLeague league;     // Vault league.
     }
     
     /// @notice mapping of all users vaults.
@@ -147,16 +157,30 @@ contract VaultFactory is Ownable {
         require(amount >= MinVaultDeposit, "Amount is too small.");
 
         uint256 amountBoosted = amount * NetworkBoost;
-        
+
+        VaultLeague tempLeague;
+
+        if (amountBoosted <= 2_000e18) {
+            tempLeague = VaultLeague.league0;
+        } else if (amountBoosted >= 2_001e18 &&  amountBoosted <= 5_000e18) {
+            tempLeague = VaultLeague.league1;
+        } else if (amountBoosted >= 5_001e18 &&  amountBoosted <= 20_000e18) {
+            tempLeague = VaultLeague.league2;
+        } else if (amountBoosted >= 20_001e18 &&  amountBoosted <= 100_000e18) {
+            tempLeague = VaultLeague.league3;
+        } else {
+            tempLeague = VaultLeague.league4;
+        }
+
         UsersVault[msg.sender] = Vault({
             exists: true,
             lastClaimTime: block.timestamp,
             pendingRewards: 0,
-            balance: amountBoosted
+            balance: amountBoosted,
+            league: tempLeague
         });
 
         TotalNetworkVaults += 1;
-        TotalSGXDeposited += amount;
 
         SGX.transferFrom(msg.sender, address(this), amount);
         SGX.approve(Treasury, amount);
@@ -176,6 +200,22 @@ contract VaultFactory is Ownable {
 
         uint256 amountBoosted = amount * NetworkBoost;
 
+        uint256 totalBalance = userVault.balance + amountBoosted;
+
+        VaultLeague tempLeague;
+
+        if (totalBalance <= 2_000e18) {
+            tempLeague = VaultLeague.league0;
+        } else if (totalBalance >= 2_001e18 &&  totalBalance <= 5_000e18) {
+            tempLeague = VaultLeague.league1;
+        } else if (totalBalance >= 5_001e18 &&  totalBalance <= 20_000e18) {
+            tempLeague = VaultLeague.league2;
+        } else if (totalBalance >= 20_001e18 &&  totalBalance <= 100_000e18) {
+            tempLeague = VaultLeague.league3;
+        } else {
+            tempLeague = VaultLeague.league4;
+        }
+
         uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
         uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
@@ -185,11 +225,10 @@ contract VaultFactory is Ownable {
         // Update user's vault info
         userVault.lastClaimTime = block.timestamp;
         userVault.pendingRewards += interest;
-        userVault.balance += amountBoosted;
+        userVault.balance = totalBalance;
+        userVault.league = tempLeague;
 
         UsersVault[msg.sender] = userVault;
-
-        TotalSGXDeposited += amount;
 
         // User needs to approve this contract to spend `token`.
         SGX.transferFrom(msg.sender, address(this), amount);
@@ -319,11 +358,11 @@ contract VaultFactory is Ownable {
 
         SGX.burn(address(this), burnAmount); // Burn token
 
-        // Convert to gSGX and send to ser.
+        // Convert to gSGX and send to user.
         SGX.approve(address(gSGX), gSGXPercent);
         gSGX.deposit(gSGXPercent);
 
-        // send to gSGX Contract
+        // send to gSGX Contracts
         SGX.transfer(address(gSGX), gSGXToContract);
 
         // TODO Change this.
@@ -374,13 +413,8 @@ contract VaultFactory is Ownable {
 
     /// @notice Checks how much reward the User can get if he claim rewards.
     /// @param user address, who we are checking the pending rewards.
-    /// @return immediateRewards uint256, rewards the user will immediately receive.
-    /// @return burnAmount       uint256, the amount of rewards that will be burned.
-    /// @return shortLockup      uint256, the amount of rewards that will be locked up for a short period.
-    /// @return longLockup       uint256, the amount of rewards that will be locked up for a long period.
-    /// @return gSGXPercent      uint256, the amount of gSGX the user will receive.
-    /// @return gSGXToContract   uint256, the amount of gSGX sent to the gSGX contract.
-    function viewPendingRewards(address user) external view returns(uint256, uint256, uint256, uint256, uint256, uint256) {
+    /// @return pendingRewards uint256, rewards that user can claim at any time.
+    function viewPendingRewards(address user) external view returns(uint256, uint256, uint256) {
         Vault memory userVault = UsersVault[user];
         require(userVault.exists == true, "You don't have a vault.");
 
@@ -388,32 +422,28 @@ contract VaultFactory is Ownable {
 
         uint256 rewardsPercent = (timeElapsed * InterestRate) / baseTime;
 
-        uint256 immediateRewards = ((userVault.balance * rewardsPercent) / scale) + userVault.pendingRewards;
+        uint256 pendingRewards = ((userVault.balance * rewardsPercent) / scale) + userVault.pendingRewards;
 
         (uint256 burnAmount,
          uint256 shortLockup,
          uint256 longLockup,
          uint256 gSGXPercent,
-         uint256 gSGXToContract) = calculateDistribution(immediateRewards);
+         uint256 gSGXToContract) = calculateDistribution(pendingRewards);
 
         // Amount burned.
-        immediateRewards -= burnAmount;
+        pendingRewards -= burnAmount;
 
         // Amount converted to gSGX and sent to user.
-        immediateRewards -= gSGXPercent; 
+        pendingRewards -= gSGXPercent; 
 
         // Amount sent to gSGX contract.
-        immediateRewards -= gSGXToContract;
+        pendingRewards -= gSGXToContract;
 
-        // Amount to be locked up for a short period.
-        immediateRewards -= shortLockup;
+        pendingRewards -= shortLockup;
 
-        // Amount to be locked up for a long period.
-        immediateRewards -= longLockup;
+        pendingRewards -= longLockup;
 
-        // The final result of the immediateRewards is what the user will recieve in his wallet.
-
-        return (immediateRewards, burnAmount, shortLockup, longLockup, gSGXPercent, gSGXToContract);
+        return (pendingRewards, shortLockup, longLockup);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -422,9 +452,6 @@ contract VaultFactory is Ownable {
 
     /// @notice Total vaults created.
     uint256 public TotalNetworkVaults;
-
-    /// @notice Total SGX in the Protocol
-    uint256 public TotalSGXDeposited;
     
     /// @notice Total protocol debt from vaults liquidated.
     uint256 public ProtocolDebt;
@@ -454,12 +481,26 @@ contract VaultFactory is Ownable {
 
     /// @notice Get user's vault info.
     /// @param user address, user we are checking the vault.
-    function getVaultInfo(address user) public view returns(uint256 lastClaimTime, uint256 pendingRewards, uint256 balance) {
+    function getVaultInfo(address user) public view returns(
+        uint256 lastClaimTime, 
+        uint256 pendingRewards, 
+        uint256 balance, 
+        VaultLeague league
+        ) {
         require(UsersVault[user].exists == true, "Vault doens't exist.");
 
         lastClaimTime  = UsersVault[user].lastClaimTime;
         pendingRewards = UsersVault[user].pendingRewards;
         balance        = UsersVault[user].balance;
+        league         = UsersVault[user].league;
+    }
+
+    function getUserBalance(address user) public view returns (uint256) {
+        return UsersVault[user].balance;
+    }
+
+    function getUserLeague(address user) public view returns (VaultLeague) {
+        return UsersVault[user].league;
     }
 
     /// @notice Check if vault exists.
@@ -478,19 +519,10 @@ contract VaultFactory is Ownable {
         return false; 
     }
 
-    /// @notice Get the SGX token address.
-    function getSGXAddress() external view returns (address) {
-        return address(SGX);
-    }
-
-    /// @notice Get the gSGX token address.
-    function getGSGXAddress() external view returns (address) {
-        return address(gSGX);
-    }
-
     function getGSGXDominance() external view returns (uint256) {
         require(SGX.totalSupply() > 0, "not enough SGX.");
 
+        // result / 1e18 * 100
         return (SGX.balanceOf(address(gSGX)) * scale) / SGX.totalSupply();
     }
 }

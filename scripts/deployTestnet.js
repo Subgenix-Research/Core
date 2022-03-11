@@ -46,12 +46,6 @@ async function main() {
     console.log("✓".green + " VaultFactory deployed to:", vault.address);
 
 
-    const Zapper = await ethers.getContractFactory("Zapper");
-    const zapper = await Zapper.deploy(SGX.address, vault.address);
-    await zapper.deployed();
-    
-    console.log("✓".green + " Zapper deployed to:", zapper.address);
-
 
     // SETTING UP CONTRACTS
 
