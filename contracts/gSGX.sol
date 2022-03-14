@@ -25,10 +25,6 @@ contract gSGX is ERC20, Ownable {
     /// @param share uint256, the total gSGX shares that were burned.
     event Withdraw(address indexed user, uint256 amount, uint256 share);
 
-    /// @notice Emitted when the penalty value is updated.
-    /// @param newPenalty uint256, the new penalty value.
-    event penaltySet(uint256 newPenalty);
-
     /// @notice Emitted when the withdraw ceil is updated.
     /// @param _ceil uint256, the new withdraw ceil value.
     event withdrawCeilSet(uint256 _ceil);
@@ -40,17 +36,8 @@ contract gSGX is ERC20, Ownable {
     /// @notice Subgenix Network offical token.
     IERC20 public immutable SGX;
 
-    /// @notice The penalty for withdrawing early.
-    uint256 public penalty;
-
     /// @notice The withdraw ceiling, manually updated by devs.
     uint256 public withdrawCeil;
-
-    /// @notice The max penalty for withdrawing, 25%.
-    uint256 public constant MAX_PENALTY = 2500;
-
-    /// @notice The base multiplier.
-    uint256 public constant BASE_VALUE = 10000;
 
     constructor(
         address _sgx
@@ -63,23 +50,22 @@ contract gSGX is ERC20, Ownable {
     ///////////////////////////////////////////////////////////////*/
 
     /// @notice Locks SGX and mints gSGX.
+    /// @param _to address, user we are sending the gSGX to.
     /// @param _amount uint256, the amount of SGX that will be locked.
-    function deposit(uint256 _amount) external {
+    function deposit(address _to, uint256 _amount) external {
         // Gets the amount of SGX locked in the contract
-        uint256 totalSGX = sgxBalance();
+        uint256 totalSGX = SGX.balanceOf(address(this));
 
         // Get the amount of gSGX in existence
         uint256 totalShares = totalSupply;
 
         // If no gSGX exists, mint it 1:1 to the amonut put in
         if (totalShares == 0 || totalSGX == 0) {
-            _mint(msg.sender, _amount);
+            _mint(_to, _amount);
         } else {
             // Calculate and mint the amount of gSGX the SGX is worth.
-            // The ratio will change overtime, as gSGX is burned/minted
-            // and SGX deposited + gained from fees / withdrawn.
             uint256 value = (_amount * totalShares) / totalSGX;
-            _mint(msg.sender, value);
+            _mint(_to, value);
         }
 
         // Lock the SGX in the contract
@@ -93,7 +79,7 @@ contract gSGX is ERC20, Ownable {
     function withdraw(uint256 _share) external {
 
         // Gets the amount of SGX locked in the contract
-        uint256 totalSGX = sgxBalance();
+        uint256 totalSGX = SGX.balanceOf(address(this));
 
         // Get the amount of gSGX in existence
         uint256 totalShares = totalSupply;
@@ -109,21 +95,10 @@ contract gSGX is ERC20, Ownable {
         // burn gSGX
         _burn(msg.sender, _share);
 
-        uint256 fee = (amount * penalty) / BASE_VALUE;
-        uint256 finalAmount = amount - fee;
-
         // Transfer user's SGX.
-        SGX.transfer(msg.sender, finalAmount);
+        SGX.transfer(msg.sender, amount);
 
-        emit Withdraw(msg.sender, finalAmount, _share);
-    }
-
-    /// @notice Change the early withdraw penalty value
-    /// @param _penalty uint256, new penalty for early withdraw.
-    function setPenalty(uint256 _penalty) external onlyOwner {
-        require(_penalty <= MAX_PENALTY, "penalty is too high.");
-        penalty = _penalty;
-        emit penaltySet(_penalty);
+        emit Withdraw(msg.sender, amount, _share);
     }
 
     /// @notice Updates the withdraw ceil value.
@@ -131,15 +106,5 @@ contract gSGX is ERC20, Ownable {
     function setWithdrawCeil(uint256 _ceil) external onlyOwner {
         withdrawCeil = _ceil;
         emit withdrawCeilSet(_ceil);
-    }
-
-    /*///////////////////////////////////////////////////////////////
-                            VIEW FUNCTIONS 
-    ///////////////////////////////////////////////////////////////*/
-
-    /// @notice Get the total amount of SGX locked in this contract.
-    /// @return The amount of SGX locked in this contract.
-    function sgxBalance() public view returns(uint256) {
-        return SGX.balanceOf(address(this));
     }
 }

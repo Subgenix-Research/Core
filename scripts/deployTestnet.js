@@ -3,6 +3,7 @@ const colors = require("colors");
 async function main() {
 
     const treasury = "0x59fcd31a5d1356844aD410e138D8a915E8AB20d0";
+    const research = "0x59fcd31a5d1356844aD410e138D8a915E8AB20d0";
 
     const [owner] = await ethers.getSigners();
 
@@ -32,13 +33,14 @@ async function main() {
     await gSGX.deployed();
     
     console.log("✓".green + " gSGX deployed to:", gSGX.address);
-
+    
     
     const VaultFactory = await ethers.getContractFactory("VaultFactory");
     const vault = await VaultFactory.deploy(
         SGX.address,
         gSGX.address,
         treasury,
+        research,
         lockup.address
     );
     await vault.deployed();

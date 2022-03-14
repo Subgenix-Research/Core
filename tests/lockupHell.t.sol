@@ -15,6 +15,7 @@ contract LockUpHellTest is DSTest {
     Subgenix SGX;
     gSGX gsgx;
     address Treasury = address(0xBEEF);
+    address Research = address(0xABCD);
 
     uint256 shortRewards = 1e18;
     uint256 longRewards = 5e18;
@@ -37,6 +38,7 @@ contract LockUpHellTest is DSTest {
             address(SGX),      // Underlying token.
             address(gsgx),     // Governance token.
             Treasury,          // Treasury address.
+            Research,          // Research address.
             address(lockup)    // Lockup contract.
         );
 

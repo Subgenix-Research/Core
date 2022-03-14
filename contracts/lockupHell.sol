@@ -172,7 +172,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         // If all three are true, the user can safely colect their short lockup rewards.
         require(UsersLockupLength[user] >= index, "Index invalid");
         require(UsersLockup[user][index].shortRewardsCollected == false, "Already claimed.");
-        require(block.timestamp > UsersLockup[user][index].shortLockupUnlockDate, "Too early to claim.");
+        //require(block.timestamp > UsersLockup[user][index].shortLockupUnlockDate, "Too early to claim.");
         require(msg.sender == user, "You can only claim your own rewards.");
 
         // Make a temporary copy of the user `lockup` and get the short lockup rewards amount.
@@ -215,7 +215,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         // If all three are true, the user can safely colect their long lockup rewards.
         require(UsersLockupLength[user] >= index, "Index invalid");
         require(UsersLockup[user][index].longRewardsCollected == false, "Already claimed.");
-        require(block.timestamp > UsersLockup[user][index].longLockupUnlockDate, "Too early to claim.");
+        //require(block.timestamp > UsersLockup[user][index].longLockupUnlockDate, "Too early to claim.");
         require(msg.sender == user, "You can only claim your own rewards.");
 
         // Make a temporary copy of the user `lockup` and get the long lockup rewards amount.

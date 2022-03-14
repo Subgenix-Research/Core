@@ -18,6 +18,7 @@ contract VaultFactoryTest is DSTest {
     Subgenix SGX;
     gSGX GSGX;
     address Treasury = address(0xBEEF);
+    address Research = address(0xABCD);
 
     using FullMath for uint256;
 
@@ -32,6 +33,7 @@ contract VaultFactoryTest is DSTest {
             address(SGX),      // Underlying token.
             address(GSGX),     // Governance token
             Treasury,          // Treasury address.
+            Research,          // Research address.
             address(lockup)    // Lockup contract.
         );
 
@@ -48,6 +50,8 @@ contract VaultFactoryTest is DSTest {
         vault.setNetworkBoost(1);          // SGX booster.
 
         SGX.setManager(address(vault), true);
+
+        hevm.stopPrank();
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -60,7 +64,7 @@ contract VaultFactoryTest is DSTest {
         assertEq(vault.MinVaultDeposit(), 1e18); 
         assertEq(vault.InterestRate(), 1e17);
     }
-    
+
     function testCreateVault() public {
         ERC20User user = new ERC20User(SGX);
         uint256 amount = 200e18;
@@ -78,7 +82,7 @@ contract VaultFactoryTest is DSTest {
 
         // 2. Approve this address to spend impersonated account tokens.
         user.approve(address(vault), amount);
-         
+
         // 3. Impersonate user. 
         hevm.startPrank(address(user));
         vault.createVault(amount);
@@ -120,14 +124,43 @@ contract VaultFactoryTest is DSTest {
         vault.depositInVault(deposit); 
         
         ( , , balance2, ) = vault.getVaultInfo(msg.sender);
-        
-        uint256 expectedRewards = 273972602739726;
 
         uint256 currentBalance2 = (currentBalance - deposit);
 
         assertEq(balance2, balance+deposit);
         assertEq(SGX.balanceOf(msg.sender), currentBalance2);
         hevm.stopPrank();
+    }
+
+    function testDepositInVaultWithChange() public {
+        uint256 amount = 10e18;
+        uint256 deposit = 1e18;
+        uint256 balance;
+        uint256 balance2;
+
+        // 1. Mint token to account.
+        SGX.mint(msg.sender, amount);
+        uint256 balanceBefore = SGX.balanceOf(msg.sender);
+
+        hevm.startPrank(msg.sender);
+        // 2. Approve this address to spend impersonated account tokens.
+        SGX.approve(address(vault), type(uint256).max);
+         
+        // 3. Impersonate user
+        vault.createVault(deposit);
+        
+        ( , , balance, ) = vault.getVaultInfo(msg.sender);
+        hevm.stopPrank();
+
+        hevm.warp(block.timestamp + 1 days);
+
+        // Change the reward rate.
+        vault.setInterestRate(2e17);
+
+        hevm.warp(block.timestamp + 1 days);
+
+        hevm.startPrank(msg.sender);
+        vault.depositInVault(deposit);
     }
 
 
@@ -139,21 +172,16 @@ contract VaultFactoryTest is DSTest {
         uint256 vesting;
         uint256 lastClaimTime;
 
-
-        //emit log_named_address("Sender: ", msg.sender);
         // 1. Mint token to account.
         SGX.mint(msg.sender, amount);
         uint256 balanceBefore = SGX.balanceOf(msg.sender);
 
         // 2. Approve this address to spend impersonated account tokens.
-        hevm.prank(msg.sender);
+        hevm.startPrank(msg.sender);
         SGX.approve(address(vault), amount);
          
-        // 3. Impersonate user. 
-        hevm.prank(msg.sender);
         vault.createVault(deposit);
 
-        hevm.prank(msg.sender);
         ( , , balance, ) = vault.getVaultInfo(msg.sender);
 
         uint256 userSGXBalance = amount - deposit;
@@ -180,14 +208,48 @@ contract VaultFactoryTest is DSTest {
         uint256 result = (amount - deposit) + reward;
         
         // Approve
-        hevm.prank(msg.sender);
         SGX.approve(address(lockup), type(uint256).max);
 
-        hevm.prank(msg.sender);
         vault.claimRewards(msg.sender);
          
+        hevm.stopPrank();
         //hevm.prank(msg.sender);
         //assertEq(SGX.balanceOf(msg.sender), result);
+    }
+
+    function testClaimRewardsWithChange() public {
+        uint256 amount = 10e18;
+        uint256 deposit = 1e18;
+        uint256 balance;
+        uint256 balance2;
+
+        // 1. Mint token to account.
+        SGX.mint(msg.sender, amount);
+        uint256 balanceBefore = SGX.balanceOf(msg.sender);
+
+        hevm.startPrank(msg.sender);
+        // 2. Approve this address to spend impersonated account tokens.
+        SGX.approve(address(vault), type(uint256).max);
+         
+        // 3. Impersonate user
+        vault.createVault(deposit);
+        
+        ( , , balance, ) = vault.getVaultInfo(msg.sender);
+        hevm.stopPrank();
+
+        hevm.warp(block.timestamp + 1 days);
+
+        // Change the reward rate.
+        vault.setInterestRate(2e17);
+
+        hevm.warp(block.timestamp + 1 days);
+
+        hevm.startPrank(msg.sender);
+        SGX.approve(address(lockup), type(uint256).max);
+        
+        vault.claimRewards(msg.sender);
+
+        hevm.stopPrank();
     }
 
 
@@ -226,7 +288,5 @@ contract VaultFactoryTest is DSTest {
         vault.claimRewards(msg.sender);
 
         uint256 dominance = vault.getGSGXDominance();
-
-        emit log_uint(dominance);
     }
 }

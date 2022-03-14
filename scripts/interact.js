@@ -2,25 +2,11 @@ async function main() {
 
     const [owner] = await ethers.getSigners();
 
-    const GSGX = await ethers.getContractFactory("gSGX");
-    const gsgx = await GSGX.attach("0x0dF10dbea580A5732F5D4481B6e15f061458F2af");
+    const VaultFactory = await ethers.getContractFactory("VaultFactory");
+    const vault = await VaultFactory.attach("0x19104b758Ee6e82736EcC9a313667cAB214c460f");
 
-    const Subgenix = await ethers.getContractFactory("Subgenix");
-    const sgx = await Subgenix.attach("0xafaa376eD83A82Df35c85f7Ff991F212AdAF9929");
-
-    const numerator = (await sgx.balanceOf(gsgx.address)).div(ethers.utils.parseUnits("1", 18)).toNumber();
-
-    console.log(numerator);
-
-    const supply = (await sgx.totalSupply()).div(ethers.utils.parseUnits("1", 18)).toNumber();
-
-    console.log(supply);
-
-    const formula = numerator * 10000 / supply;
-    
-    const final = formula * 100 / 10000;
-
-    console.log(final);
+    const length = await vault.getPastInterestRatesLength();
+    console.log(length);
 
 }
 
@@ -30,6 +16,9 @@ main()
         console.error(error);
         process.exit(1);
     })
+
+    //const GSGX = await ethers.getContractFactory("gSGX");
+    //const gsgx = await GSGX.attach("0x0dF10dbea580A5732F5D4481B6e15f061458F2af");
 
     //const Subgenix = await ethers.getContractFactory("Subgenix");
     //const sgx = await Subgenix.attach("0xafaa376eD83A82Df35c85f7Ff991F212AdAF9929");
