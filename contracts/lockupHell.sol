@@ -3,7 +3,7 @@ pragma solidity >=0.8.0 < 0.9.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
+import {ExtendedIERC20} from "./interfaces/ExtendedIERC20.sol";
 
 /// @title Lockup Hell.
 /// @author Subgenix Research.
@@ -19,37 +19,41 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     /// @param user address, Owner of the rewards that are being locked up.
     /// @param shortLockupRewards uint256, short lockup period.
     /// @param longLockupRewards uint256, long lockup period.
-    event rewardsLocked(address indexed user, uint256 shortLockupRewards, uint256 longLockupRewards);
+    event RewardsLocked(address indexed user, uint256 shortLockupRewards, uint256 longLockupRewards);
     
     /// @notice Emitted when short lockup rewards are unlocked.
     /// @param user address, Owner of the rewards that are being unlocked.
     /// @param shortRewards uint256, amount of rewards unlocked.
-    event unlockShortLockup(address indexed user, uint256 shortRewards);
+    event UnlockShortLockup(address indexed user, uint256 shortRewards);
     
     /// @notice Emitted when long lockup rewards are unlocked.
     /// @param user address, Owner of the rewards that are being unlocked.
     /// @param longRewards uint256, amount of rewards unlocked.
-    event unlockLongLockup(address indexed user, uint256 longRewards);
+    event UnlockLongLockup(address indexed user, uint256 longRewards);
 
     /// @notice Emitted when the owner of the contrct changes the shorter lockup time period.
     /// @param value uint32, the new value of the shorter lockup time period.
-    event shortLockupTimeChanged(uint32 value);
+    event ShortLockupTimeChanged(uint32 value);
 
     /// @notice Emitted when the owner of the contrct changes the longer lockup time period.
     /// @param value uint32, the new value of the longer lockup time period.
-    event longLockupTimeChanged(uint32 value);
+    event LongLockupTimeChanged(uint32 value);
 
     /// @notice Emitted when the owner of the contract changes the % of the rewards that are
     ///         going to be locked up for a shorter period of time.
-    /// @param percentage uint32, the new percentage (in thousands) of rewards that will be
+    /// @param percentage uint256, the new percentage (in thousands) of rewards that will be
     ///         locked up for a shorter period of time from now on.
-    event shortPercentageChanged(uint32 percentage);
+    event ShortPercentageChanged(uint256 percentage);
 
     /// @notice Emitted when the owner of the contract changes the % of the rewards that are
     ///         going to be locked up for a longer period of time.
-    /// @param percentage uint32, the new percentage (in thousands) of rewards that will be
+    /// @param percentage uint256, the new percentage (in thousands) of rewards that will be
     ///         locked up for a longer period of time from now on.
-    event longPercentageChanged(uint32 percentage);
+    event LongPercentageChanged(uint256 percentage);
+
+    /// @notice Emitted when the owner changes the address of the vaultFactory variable.
+    /// @param _vaultFactory address, the new vault factory address.
+    event VaultFactoryUpdated(address _vaultFactory);
 
     // <--------------------------------------------------------> //
     // <----------------------- STRUCTS ------------------------> //
@@ -92,10 +96,20 @@ contract LockUpHell is Ownable, ReentrancyGuard {
 
     /// @notice Subgenix offical token, minted as a reward after each lockup.
     address public immutable SGX;
+
+    // vaultFactory contract address.
+    address vaultFactory;
+
+    modifier onlyVaultFactory() {
+        require(msg.sender == vaultFactory, "Not vault Factory.");
+        _;
+    }
+
     /// @notice Global rates.
     Rates public rates;
     
     constructor(address _SGX) {
+        require(_SGX != address(0), "Can not be zero address");
         SGX = _SGX;
     }
 
@@ -114,15 +128,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         address user,
         uint256 shortLockupRewards, 
         uint256 longLockupRewards
-    ) external nonReentrant {
-        // tx.origin` is used instead of `msg.sender` because this function 
-        // is called by the `distributeRewards()` function from the
-        // `vaultFactory` contract, which is a private function. By definition
-        // this function can only be called by the contract itself which makes the
-        // `msg.sender` be the `vaultFactory` contract address instead of the user.
-        // To go around that we enforce the `tx.origin` to be the user by the 
-        // functions calling it in the `vaultFactory` contract.
-        require(tx.origin == user, "Not user");
+    ) external nonReentrant onlyVaultFactory {
 
         // first it checks how many `lockups` the user has, then it sets
         // the next index to be 'length+1' and finally it updates the 
@@ -145,13 +151,15 @@ contract LockUpHell is Ownable, ReentrancyGuard {
                 shortRewards: shortLockupRewards
             });
 
+        emit RewardsLocked(user, shortLockupRewards, longLockupRewards); 
+
         // Transfer the rewards that are going to be locked up from the user to this
         // contract. They are placed in the end of the function after all the internal
         // work and state changes are done to avoid Reentrancy Attacks.
-        IERC20(SGX).transferFrom(user, address(this), shortLockupRewards);
-        IERC20(SGX).transferFrom(user, address(this), longLockupRewards);
-
-        emit rewardsLocked(user, shortLockupRewards, longLockupRewards); 
+        bool success = ExtendedIERC20(SGX).transferFrom(user, address(this), shortLockupRewards);
+        require(success, "Failed to transfer SGX to lockupHell.");
+        success = ExtendedIERC20(SGX).transferFrom(user, address(this), longLockupRewards);
+        require(success, "Failed to transfer SGX to lockupHell.");
     }
 
     /// @notice After the shorter lockup period is over, user can claim his rewards using this function.
@@ -171,7 +179,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         //
         // If all three are true, the user can safely colect their short lockup rewards.
         require(UsersLockupLength[user] >= index, "Index invalid");
-        require(UsersLockup[user][index].shortRewardsCollected == false, "Already claimed.");
+        require(!UsersLockup[user][index].shortRewardsCollected, "Already claimed.");
         //require(block.timestamp > UsersLockup[user][index].shortLockupUnlockDate, "Too early to claim.");
         require(msg.sender == user, "You can only claim your own rewards.");
 
@@ -191,10 +199,12 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         // Takes the amount being transfered out of users total locked mapping.
         UsersTotalLocked[user] -= amount;
 
+        emit UnlockShortLockup(user, amount);
+
         // Transfer the short rewards amount to user.
-        IERC20(SGX).transfer(user, amount);
-        
-        emit unlockShortLockup(user, amount);
+        bool success = ExtendedIERC20(SGX).transfer(user, amount);
+        require(success, "Failed to trasfer SGX to user.");
+    
     }
 
     /// @notice After the longer lockup period is over, user can claim his rewards using this function.
@@ -214,7 +224,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         //
         // If all three are true, the user can safely colect their long lockup rewards.
         require(UsersLockupLength[user] >= index, "Index invalid");
-        require(UsersLockup[user][index].longRewardsCollected == false, "Already claimed.");
+        require(!UsersLockup[user][index].longRewardsCollected, "Already claimed.");
         //require(block.timestamp > UsersLockup[user][index].longLockupUnlockDate, "Too early to claim.");
         require(msg.sender == user, "You can only claim your own rewards.");
 
@@ -234,10 +244,11 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         // Takes the amount being transfered out of users total locked mapping.
         UsersTotalLocked[user] -= amount;
         
+        emit UnlockLongLockup(user, amount);
+
         // Transfer the long rewards amount to user.
-        IERC20(SGX).transfer(user, amount);
-        
-        emit unlockLongLockup(user, amount);
+        bool success = ExtendedIERC20(SGX).transfer(user, amount);
+        require(success, "Error transfering SGX to user.");
     }
 
     // <--------------------------------------------------------> //
@@ -277,6 +288,8 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     /// @dev Allows the owner of the contract to change the `shortLockupTime` value.
     function setShortLockupTime(uint32 value) external onlyOwner {
         rates.shortLockupTime = value;
+
+        emit ShortLockupTimeChanged(value);
     }
 
     /// @notice Allows the owner of the contract to change the longer lockup period all
@@ -284,19 +297,35 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     /// @dev Allows the owner of the contract to change the `longLockupTime` value.
     function setLongLockupTime(uint32 value) external onlyOwner { 
         rates.longLockupTime = value;
+
+        emit LongLockupTimeChanged(value);
     }
 
     /// @notice Allows the owner of the contract change the % of the rewards that are
     ///         going to be locked up for a short period of time.
     /// @dev Allows the owner of the contract to change the `shortPercentage` value.    
-    function setShortPercentage(uint256 value) external onlyOwner {
-        rates.shortPercentage = value;
+    function setShortPercentage(uint256 percentage) external onlyOwner {
+        rates.shortPercentage = percentage;
+
+        emit ShortPercentageChanged(percentage);
     }
-    
+
     /// @notice Allows the owner of the contract change the % of the rewards that are
     ///         going to be locked up for a long period of time.
     /// @dev Allows the owner of the contract to change the `long` value.
-    function setLongPercentage(uint256 value) external onlyOwner { 
-        rates.longPercentage = value;
+    function setLongPercentage(uint256 percentage) external onlyOwner { 
+        rates.longPercentage = percentage;
+
+        emit LongPercentageChanged(percentage);
+    }
+
+    /// @notice Updates the vaultFactory contract address.
+    /// @param  _vaultFactory address, vaultFactory contract address.
+    function setVaultFactory(address _vaultFactory) external onlyOwner {
+        require(_vaultFactory != address(0), "Can not be zero address");
+        
+        vaultFactory = _vaultFactory;
+
+        emit VaultFactoryUpdated(_vaultFactory);
     }
 }

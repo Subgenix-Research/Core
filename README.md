@@ -13,5 +13,16 @@ clean: `make clean`
 
 **Dependencies**:
 - [Foundry](https://github.com/gakonst/foundry#installation) As the development framework.    
-    - [Solmate](https://github.com/Rari-Capital/solmate): `forge install Rari-Capital/solmate`   
-    - [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts): `forge install openzeppelin/openzeppelin-contracts`   
+
+**External libraries**:
+- [Solmate](https://github.com/Rari-Capital/solmate): `forge install Rari-Capital/solmate`   
+- [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts): `forge install openzeppelin/openzeppelin-contracts` 
+
+
+## Security:
+
+[Slither](https://github.com/crytic/slither) was used as a static analyzer to
+search for vulnerabilities in the contract.
+
+
+run: `slither --hardhat-ignore-compile .`   

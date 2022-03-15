@@ -41,6 +41,7 @@ contract VaultFactoryTest is DSTest {
         lockup.setShortPercentage(12e16);   // Percentage to be locked up for 07 days, 1200 = 12%
         lockup.setLongLockupTime(1555200); // 18 days in seconds
         lockup.setShortLockupTime(604800); // 07 days in seconds
+        lockup.setVaultFactory(address(vault));
 
         vault.setInterestRate(1e17);        // Daily rewards, 1e17 = 10%
         vault.setBurnPercent(2e16);         // Percentage burned when claiming rewards, 200 = 2%.
@@ -79,10 +80,10 @@ contract VaultFactoryTest is DSTest {
         assertEq(balanceBefore, amount);
 
         // 2. Approve this address to spend impersonated account tokens.
+        hevm.startPrank(address(user));
         user.approve(address(vault), amount);
 
         // 3. Impersonate user. 
-        hevm.startPrank(address(user));
         vault.createVault(amount);
 
         ( , , balance, ) = vault.getVaultInfo(address(user));

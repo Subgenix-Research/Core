@@ -69,7 +69,8 @@ contract gSGX is ERC20, Ownable {
         }
 
         // Lock the SGX in the contract
-        SGX.transferFrom(msg.sender, address(this), _amount);
+        bool success = SGX.transferFrom(msg.sender, address(this), _amount);
+        require(success, "Failed to transfer SGX to gSGX contract.");
 
         emit Deposit(msg.sender, _amount);
     }
@@ -96,7 +97,8 @@ contract gSGX is ERC20, Ownable {
         _burn(msg.sender, _share);
 
         // Transfer user's SGX.
-        SGX.transfer(msg.sender, amount);
+        bool success = SGX.transfer(msg.sender, amount);
+        require(success, "Failed transfering SGX to user.");
 
         emit Withdraw(msg.sender, amount, _share);
     }

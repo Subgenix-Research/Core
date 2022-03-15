@@ -46,6 +46,7 @@ contract LockUpHellTest is DSTest {
         lockup.setShortPercentage(12e16);   // Percentage to be locked up for 07 days, 12e16 = 12%.
         lockup.setLongLockupTime(18 days); // 18 days in seconds
         lockup.setShortLockupTime(7 days); // 07 days in seconds
+        lockup.setVaultFactory(address(vault));
 
         vault.setInterestRate(1e16);      // Daily rewards, 1e16 = 1%
         vault.setBurnPercent(2e16);         // Percentage burned when claiming rewards, 2e16 = 2%.
@@ -79,6 +80,7 @@ contract LockUpHellTest is DSTest {
         // Assert User has 0 lockups before doing anything.
         assertEq(lockup.UsersLockupLength(msg.sender), 0);
         
+        hevm.prank(address(vault)); // Impersonate vaultFactory
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
         // Assert User has 1 lockup.
@@ -120,6 +122,7 @@ contract LockUpHellTest is DSTest {
         hevm.prank(msg.sender); // Impersonate user
         SGX.approve(address(lockup), depositAmount);
         
+        hevm.prank(address(vault)); // Impersonate vaultFactory
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
         // Jump 20 days in the future.
@@ -152,11 +155,13 @@ contract LockUpHellTest is DSTest {
         uint256 depositAmount = 10e18;
         SGX.mint(msg.sender, depositAmount);
         
-        hevm.startPrank(msg.sender); // Impersonate user
+        hevm.prank(msg.sender); // Impersonate user
         SGX.approve(address(lockup), depositAmount);
         
+        hevm.prank(address(vault)); // Impersonate vaultFactory
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
+        hevm.startPrank(msg.sender); // Impersonate user
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
 
@@ -179,6 +184,8 @@ contract LockUpHellTest is DSTest {
         assertTrue(userLockup.longRewardsColected);
         assertEq(userLockup.longRewards, 0);
         assertEq(SGX.balanceOf(msg.sender), (balanceBefore+longRewards));
+
+        hevm.stopPrank();
     }
 
     // <----------------------------------------------------> //

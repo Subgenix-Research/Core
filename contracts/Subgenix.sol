@@ -13,13 +13,13 @@ contract Subgenix is ERC20, Ownable {
     /// @notice Emitted only when a manager is added or removed from the `managers` mapping.
     /// @param user address, Contract/User to be added/removed from the managers mapping.
     /// @param value bool, true to add permission, false to remove permission.
-    event managerSet(address indexed user, bool value);
+    event ManagerSet(address indexed user, bool value);
 
     /// @notice Mapping of allowed address.
     mapping(address => bool) public managers;
 
     modifier onlyManagers() {
-        require(managers[msg.sender] == true, "Not manager.");
+        require(managers[msg.sender], "Not manager.");
         _;
     }
     
@@ -62,6 +62,6 @@ contract Subgenix is ERC20, Ownable {
     function setManager(address user, bool value) external onlyOwner {
         managers[user] = value;
 
-        emit managerSet(user, value);
+        emit ManagerSet(user, value);
     }
 }

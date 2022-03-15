@@ -66,6 +66,10 @@ async function main() {
     await (await lockup.setLongLockupTime(1555200)).wait();
     await (await lockup.setShortLockupTime(604800)).wait();
 
+    
+    console.log("   set vaultFactory contract..");
+    await (await lockup.setVaultFactory(vault.address)).wait();
+
 
     console.log("   set vault variables..");
     await (await vault.setInterestRate(ethers.utils.parseUnits("1", 17))).wait();    // 10%
