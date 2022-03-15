@@ -2,12 +2,30 @@ async function main() {
 
     const [owner] = await ethers.getSigners();
 
-    const VaultFactory = await ethers.getContractFactory("VaultFactory");
-    const vault = await VaultFactory.attach("0x19104b758Ee6e82736EcC9a313667cAB214c460f");
+    const Subgenix = await ethers.getContractFactory("Subgenix");
+    const sgx = await Subgenix.attach("0xeBA009AAB3AF18BBc8D82a799f9507A804aF1C90");
 
-    const length = await vault.getPastInterestRatesLength();
-    console.log(length);
+    const GSGX = await ethers.getContractFactory("gSGX");
+    const gsgx = await GSGX.attach("0x498aDB48AaE5dd44A681D8A8C27040930cc12c96");
 
+    // Example of amount being deposited.
+    const depositAmount = ethers.utils.parseEther("1");
+
+    const totalSGX = await sgx.balanceOf(gsgx.address);
+
+    const totalSupplyGSGX = await gsgx.totalSupply();
+
+    var toValue;
+    
+    if (totalSGX == 0 || totalSupplyGSGX == 0) {
+        toValue = depositAmount;
+    } else {
+        // toValue = (depositAmount * totalSupplyGSGX) / totalSGX;
+        toValue = (depositAmount.mul(totalSupplyGSGX)).div(totalSGX);
+    }
+
+    console.log(toValue);
+    
 }
 
 main()

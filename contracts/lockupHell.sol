@@ -11,9 +11,9 @@ import {IERC20} from "./interfaces/IERC20.sol";
 /// @dev This contract is called from the vaultFactory to lock users rewards.
 contract LockUpHell is Ownable, ReentrancyGuard {
 
-    /*///////////////////////////////////////////////////////////////
-                                  EVENTS
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <------------------------ EVENTS ------------------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Emitted when user rewards are locked.
     /// @param user address, Owner of the rewards that are being locked up.
@@ -51,9 +51,9 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     ///         locked up for a longer period of time from now on.
     event longPercentageChanged(uint32 percentage);
 
-    /*///////////////////////////////////////////////////////////////
-                                STRUCTS
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <----------------------- STRUCTS ------------------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Global rates defined by the owner of the contract.
     struct Rates {
@@ -73,9 +73,9 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         uint256 shortRewards;         // The amount of rewards available to the user after shortLockupUnlockDate.
     }
 
-    /*///////////////////////////////////////////////////////////////
-                            GLOBAL VARIABLES
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <------------------- GLOBAL VARIABLES -------------------> //
+    // <--------------------------------------------------------> // 
     
     /// @notice A mapping for each user's lockup i.e. `UsersLockup[msg.sender][index]`
     ///         where the `index` refers to which lockup the user wants to look at.
@@ -99,9 +99,9 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         SGX = _SGX;
     }
 
-    /*///////////////////////////////////////////////////////////////
-                            EXTERNAL FUNCTIONS 
-    ///////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <------------------ EXTERNAL FUNCTIONS ------------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Every time a user claim's his rewards, a portion of them are locked for a specific time period
     ///         in this contract.
@@ -240,9 +240,9 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         emit unlockLongLockup(user, amount);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                            VIEW FUNCTIONS 
-    ///////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <-------------------- VIEW FUNCTIONS --------------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Allow the user to check how long `shortLockupTime` is set to.
     /// @return uint32, the value `shortLockupTime` is set to.
@@ -268,9 +268,9 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         return rates.longPercentage;
     }
 
-    /*///////////////////////////////////////////////////////////////
-                                ONLY OWNER
-    ///////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <---------------------- ONLY OWNER ----------------------> //
+    // <--------------------------------------------------------> // 
     
     /// @notice Allows the owner of the contract to change the shorter lockup period all
     ///         users rewards are going to be locked up to.

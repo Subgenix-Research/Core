@@ -16,11 +16,13 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
     using FullMath for uint256;
     
-    /*///////////////////////////////////////////////////////////////
-                                METADATA
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <----------------------- METADATA -----------------------> //
+    // <--------------------------------------------------------> // 
 
+    // Trader Joe Router.
     IJoeRouter02 private joeRouter = IJoeRouter02(0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
+    // WAVAX token address.
     address constant WAVAX = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
 
     IERC20 public immutable SGX;        // Official Subgenix Network token.
@@ -42,19 +44,18 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         Research = _research;
         Lockup = _lockup;
     }
-    
 
-    /*///////////////////////////////////////////////////////////////
-                         VAULTS CONFIGURATION
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <----------------- VAULTS CONFIGURATION -----------------> //
+    // <--------------------------------------------------------> // 
     
     // Vault Leagues.
     enum VaultLeague {
-        league0,
-        league1,
-        league2,
-        league3,
-        league4
+        league0, //
+        league1, //
+        league2, //
+        league3, //
+        league4  //
     }
 
     // Vault's info.
@@ -63,7 +64,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         uint256 lastClaimTime;  // Last claim.
         uint256 pendingRewards; // All pending rewards.
         uint256 balance;        // Total Deposited in the vault.
-        uint256 interestLength; //
+        uint256 interestLength; // Last interestRates length.
         VaultLeague league;     // Vault league.
     }
     
@@ -110,11 +111,15 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @notice Percentage of the reward sent to the gSGX contract.
     uint256 public GSGXDistributed;
 
+    /// @notice Time you have to wait to colect rewards again.
+    uint256 public rewardsWaitTime;
+
     /// @notice Used to boost users SGX. 
     /// @dev Multiplies users SGX (amount * networkBoost) when
     ///      depositing/creating a vault.
     uint8 public NetworkBoost;
 
+    /// @notice Indicates if swaps are happening or not.
     bool allowTreasurySwap;
 
     /// @notice Updates the burn percentage.
@@ -159,10 +164,10 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     function setgSGXDistributed(uint256 percentage) external onlyOwner {
         GSGXDistributed = percentage;
     }
-    
-    /*///////////////////////////////////////////////////////////////
-                        VAULTS FUNCTIONALITY
-    //////////////////////////////////////////////////////////////*/
+
+    // <--------------------------------------------------------> //
+    // <----------------- VAULTS FUNCTIONALITY -----------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Creates a vault for the user.
     /// @param amount uint256, amount that will be deposited in the vault.
@@ -185,9 +190,9 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         TotalNetworkVaults += 1;
 
-        SGX.transferFrom(msg.sender, address(this), amount);
-
         uint256 swapAmount;
+
+        SGX.transferFrom(msg.sender, address(this), amount);
 
         if (allowTreasurySwap) {
             // Swaps 66% of the amount deposit to AVAX.
@@ -205,7 +210,6 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @notice Deposits `amount` of SGX in the vault.
     /// @param amount uint256, amount that will be deposited in the vault.
     function depositInVault(uint256 amount) external nonReentrant {
-        require(amount >= MinVaultDeposit, "Amount is too small.");
         Vault memory userVault = UsersVault[msg.sender];
         
         require(userVault.exists == true, "You don't have a vault.");
@@ -221,18 +225,11 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         // Make the check if interest rate length is still the same.
         if (PastInterestRates.length != userVault.interestLength) {
-            for (uint i = userVault.interestLength; i < PastInterestRates.length; i++) {
-                
-                timeElapsed = TimeWhenChanged[i] - userVault.lastClaimTime;
-
-                rewardsPercent = (timeElapsed).mulDiv(PastInterestRates[i], baseTime);
-                
-                interest += (userVault.balance).mulDiv(rewardsPercent, scale);
-                
-                userVault.lastClaimTime = TimeWhenChanged[i];
-
-                userVault.interestLength += 1;
-            }
+            (timeElapsed, 
+             rewardsPercent, 
+             interest, 
+             userVault.interestLength, 
+             userVault.lastClaimTime) = getPastInterestRates(userVault.interestLength, userVault.lastClaimTime, userVault.balance);
         }
 
         timeElapsed = block.timestamp - userVault.lastClaimTime;
@@ -267,6 +264,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     }
 
     /// @notice Deletes user's vault.
+    /// @param user address, the user we are deliting the vault.
     function liquidateVault(address user) external nonReentrant {
         require(msg.sender == user, "You can only liquidate your own vault.");
         Vault memory userVault = UsersVault[user];
@@ -300,6 +298,40 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         emit VaultLiquidated(user);
     }
 
+    /// @notice Calculates the total interest generated based
+    ///         on past interest rates.
+    /// @param _userInterestLength uint256, the last interest length updated in users vault.
+    /// @param _userLastClaimTime uint256,  the last time user claimed his rewards.
+    /// @param _userBalance uint256,        user balance in the vault.
+    /// @return timeElapsed uint256,        time between the last time interest rates changed and the user claim time.
+    /// @return rewardsPercent uint256,     percent of rewards based on `baseTime`.
+    /// @return interest uint256,           the total interest accumalted.
+    /// @return interestLength uint256,     the updated version of users interest length.
+    /// @return lastClaimTime uint256,      the updated version of users last claim time.
+    function getPastInterestRates(
+        uint256 _userInterestLength, 
+        uint256 _userLastClaimTime,
+        uint256 _userBalance
+        ) internal view returns(uint256 timeElapsed, uint256 rewardsPercent, uint256 interest, uint256 interestLength, uint256 lastClaimTime) {
+        
+        interestLength = _userInterestLength;
+        lastClaimTime = _userLastClaimTime;
+
+        for (uint i = interestLength; i < PastInterestRates.length; i++) {
+            
+            timeElapsed = TimeWhenChanged[i] - lastClaimTime;
+            rewardsPercent = (timeElapsed).mulDiv(PastInterestRates[i], baseTime);
+            
+            interest += (_userBalance).mulDiv(rewardsPercent, scale);
+            
+            lastClaimTime = TimeWhenChanged[i];
+            interestLength += 1;
+        }
+    }
+
+    /// @notice Gets the league user is part of depending on the balance in his vault.
+    /// @param balance uint256, the balance in user's vault.
+    /// @return tempLeague VaultLeague, the league user is part of.
     function getVaultLeague(uint256 balance) internal pure returns(VaultLeague tempLeague) {
         if (balance <= 2_000e18) {
             tempLeague = VaultLeague.league0;
@@ -314,6 +346,14 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         }
     }
 
+    /// @notice swaps SGX for AVAX on traderJoe. The Subgenix Network will use the SGX
+    ///         in the treasury to make investments in subnets, and at a certain point the
+    ///         team would have to sell its SGX tokens to make the investments. To avoid
+    ///         big dumps in the price of the token we decided to make a partial sell of the
+    ///         SGX everytime some SGX goes to the treasury, this will help the team have
+    ///         AVAX ready to make the investments and will save the community from seeing
+    ///         massive dumps in the price of the token.
+    /// @param swapAmount uint256, the amount of SGX we are making the swap.
     function swapSGXforAVAX(uint256 swapAmount) private onlyOwner {
 
         address[] memory path;
@@ -321,18 +361,18 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         path[0] = address(SGX);
         path[1] = WAVAX;
 
-        SGX.approve(address(joeRouter), swapAmount);
-
         uint256 toTreasury = swapAmount.mulDiv(75e16, scale);
         uint256 toResearch = swapAmount - toTreasury;
+
+        SGX.approve(address(joeRouter), swapAmount);
         
         joeRouter.swapExactTokensForAVAX(toTreasury, 0, path, Treasury, block.timestamp);
         joeRouter.swapExactTokensForAVAX(toResearch, 0, path, Research, block.timestamp);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                         REWARDS CONFIGURATION
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <---------------- REWARDS  CONFIGURATION ----------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Emmited when the reward percentage is updated.
     /// @param reward uint256, the new reward percentage.
@@ -352,9 +392,8 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @notice Interest rate (per `baseTime`) i.e. 1e17 = 10% / `baseTime`
     uint256 public InterestRate;
 
-    //
-    uint256[] public PastInterestRates;
-    uint256[] public TimeWhenChanged;
+    uint256[] PastInterestRates; // Past interest rates.
+    uint256[] TimeWhenChanged;   // Last time the interest rate was valid.
 
     /// @notice the level of reward granularity, WAD
     uint256 public constant scale = 1e18;
@@ -375,13 +414,9 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         emit interestRateUpdated(_reward);
     }
 
-    function getPastInterestRatesLength() external view returns(uint256) {
-        return PastInterestRates.length;
-    }
-
-    /*///////////////////////////////////////////////////////////////
-                        REWARDS FUNCTIONALITY 
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <---------------- REWARDS  FUNCTIONALITY ----------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Claims the available rewards from user's vault.
     /// @param user address, who we are claiming rewards of.
@@ -391,27 +426,20 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         require(msg.sender == user, "You can only claim your own rewards.");
         require(userVault.exists == true, "You don't have a vault.");
 
-        //require((block.timestamp - userVault.lastClaimTime) >= 24 hours, "To early to claim rewards.");
+        require((block.timestamp - userVault.lastClaimTime) >= rewardsWaitTime, "To early to claim rewards.");
 
         uint256 timeElapsed;
         uint256 rewardsPercent;
         uint256 claimableRewards;
-        
+
         // Make the check if interest rate length is still the same.
         if (PastInterestRates.length != userVault.interestLength) {
-            for (uint i = userVault.interestLength; i < PastInterestRates.length; i++) {
-                
-                timeElapsed = TimeWhenChanged[i] - userVault.lastClaimTime;
-
-                rewardsPercent = timeElapsed.mulDiv(PastInterestRates[i], baseTime);
-                
-                claimableRewards += userVault.balance.mulDiv(rewardsPercent, scale);
-                
-                userVault.lastClaimTime = TimeWhenChanged[i];
-
-                userVault.interestLength += 1;
-            }
-        } 
+            (timeElapsed, 
+             rewardsPercent, 
+             claimableRewards, 
+             userVault.interestLength, 
+             userVault.lastClaimTime) = getPastInterestRates(userVault.interestLength, userVault.lastClaimTime, userVault.balance);
+        }
 
         timeElapsed = block.timestamp - userVault.lastClaimTime;
 
@@ -468,6 +496,11 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @notice Calculate the final value of the percentage based on the rewards amount.
     ///         eg. If rewards = 100 then 10% of it = 10.
     /// @param rewards uint256, the amount all the percentages are being calculated on top off.
+    /// @return burnAmount uint256,     the amount being burned.
+    /// @return shortLockup uint256,    the amount being locked for a shorter period of time.
+    /// @return longLockup uint256,     the amount being locked for a longer period of time.
+    /// @return gSGXPercent uint256,    the amount being converted to gSGX.
+    /// @return gSGXToContract uint256, the amount being sent to the gSGX contract.
     function calculateDistribution(uint256 rewards) internal view returns (
     uint256 burnAmount, 
     uint256 shortLockup, 
@@ -487,6 +520,8 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @notice Checks how much reward the User can get if he claim rewards.
     /// @param user address, who we are checking the pending rewards.
     /// @return pendingRewards uint256, rewards that user can claim at any time.
+    /// @return shortLockup uint256, the rewards being locked for a shorter period of time.
+    /// @return longLockup uint256, the rewards being locked for a longer period of time.
     function viewPendingRewards(address user) external view returns(uint256, uint256, uint256) {
         Vault memory userVault = UsersVault[user];
         require(userVault.exists == true, "You don't have a vault.");
@@ -499,19 +534,12 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         // Make the check if interest rate length is still the same.
         if (PastInterestRates.length != userVault.interestLength) {
-            for (uint i = userVault.interestLength; i < PastInterestRates.length; i++) {
-                
-                timeElapsed = TimeWhenChanged[i] - userVault.lastClaimTime;
-
-                rewardsPercent = timeElapsed.mulDiv(PastInterestRates[i], baseTime);
-                
-                pendingRewards += userVault.balance.mulDiv(rewardsPercent, scale);
-                
-                userVault.lastClaimTime = TimeWhenChanged[i];
-
-                userVault.interestLength += 1;
-            }
-        } 
+            (timeElapsed, 
+             rewardsPercent, 
+             pendingRewards, 
+             userVault.interestLength, 
+             userVault.lastClaimTime) = getPastInterestRates(userVault.interestLength, userVault.lastClaimTime, userVault.balance);
+        }
 
         timeElapsed = block.timestamp - userVault.lastClaimTime;
 
@@ -541,9 +569,9 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         return (pendingRewards, shortLockup, longLockup);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                        PROTOCOL FUNCTIONALITY 
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <---------------- PROTOCOL FUNCTIONALITY ----------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Total vaults created.
     uint256 public TotalNetworkVaults;
@@ -568,13 +596,16 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         emit debtReaid(amount);
     }
 
-
-    /*///////////////////////////////////////////////////////////////
-                           VIEW FUNCTIONALITY 
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <------------------ VIEW FUNCTIONALITY ------------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Get user's vault info.
     /// @param user address, user we are checking the vault.
+    /// @param lastClaimTime uint256,  last time user claimed rewards.
+    /// @param pendingRewards uint256, rewards user didn't collected yet.
+    /// @param balance uint256,        user's vault balance.
+    /// @param league VaultLeague,     league user's vault is part of.
     function getVaultInfo(address user) public view returns(
         uint256 lastClaimTime, 
         uint256 pendingRewards, 
@@ -589,32 +620,42 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         league         = UsersVault[user].league;
     }
 
+    /// @notice Gets the balance in user's vault.
+    /// @param user address, the user we are checking the balance of.
+    /// @return The balance of the user.
     function getUserBalance(address user) public view returns (uint256) {
         return UsersVault[user].balance;
     }
 
+    /// @notice Gets the league user's vault is part of.
+    /// @param user address, the user we are checking the league of.
+    /// @return The user's vault league.
     function getUserLeague(address user) public view returns (VaultLeague) {
         return UsersVault[user].league;
     }
 
     /// @notice Check if vault exists.
     /// @param user address, User we are checking the vault.
+    /// @return True if vault exists, false otherwise.
     function vaultExists(address user) external view returns(bool) {
         return UsersVault[user].exists;
     }
 
+    /// @notice Checks if user can claim rewards or not.
+    /// @param user address, the user we are checking if he can claim rewards or not.
+    /// @return True if user can claim rewards, false otherwise.
     function canClaimRewards(address user) external view returns(bool) {
         require(UsersVault[user].exists == true, "Vault doens't exist.");
 
-        //uint256 lastClaimTime = UsersVault[user].lastClaimTime;
+        uint256 lastClaimTime = UsersVault[user].lastClaimTime;
 
-        //if ((block.timestamp - lastClaimTime) >= 24 hours) { return true; }
+        if ((block.timestamp - lastClaimTime) >= rewardsWaitTime) { return true; }
 
-        //return false; 
-
-        return true;
+        return false;
     }
 
+    /// @notice Gets the percentage of SGX being hold in the gSGX contract.
+    /// @return The percentage of SGX being hold in the gSGX contract.
     function getGSGXDominance() external view returns (uint256) {
         require(SGX.totalSupply() > 0, "not enough SGX.");
 

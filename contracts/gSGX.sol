@@ -10,9 +10,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @notice This is the offical governance token of the Subgenix network. 
 contract gSGX is ERC20, Ownable {
 
-    /*///////////////////////////////////////////////////////////////
-                                  EVENTS
-    //////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <------------------------ EVENTS ------------------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Emitted when user deposits their SGX for gSGX.
     /// @param user address, the user we are sending gSGX to.
@@ -29,10 +29,10 @@ contract gSGX is ERC20, Ownable {
     /// @param _ceil uint256, the new withdraw ceil value.
     event withdrawCeilSet(uint256 _ceil);
 
-    /*///////////////////////////////////////////////////////////////
-                            GLOBAL VARIABLES
-    //////////////////////////////////////////////////////////////*/
-    
+    // <--------------------------------------------------------> //
+    // <------------------- GLOBAL VARIABLES -------------------> //
+    // <--------------------------------------------------------> // 
+
     /// @notice Subgenix Network offical token.
     IERC20 public immutable SGX;
 
@@ -45,9 +45,9 @@ contract gSGX is ERC20, Ownable {
         SGX = IERC20(_sgx);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                            EXTERNAL FUNCTIONS 
-    ///////////////////////////////////////////////////////////////*/
+    // <--------------------------------------------------------> //
+    // <------------------ EXTERNAL FUNCTIONS ------------------> //
+    // <--------------------------------------------------------> // 
 
     /// @notice Locks SGX and mints gSGX.
     /// @param _to address, user we are sending the gSGX to.

@@ -3,21 +3,15 @@ async function main() {
     const [owner] = await ethers.getSigners();
 
     const VaultFactory = await ethers.getContractFactory("VaultFactory");
-    const vault = await VaultFactory.attach("0x5D582F9502ec43293C82aa982b5eAA836fa9335C");
-
-    // Function to calcualte APR
-    const APR = (interestRate) => {
-        return ((((1 + interestRate) ** (1/31536000)) - 1) * 31536000) * 100
-    }
+    const vault = await VaultFactory.attach("0x09446bF71D5465b27069807f68D871dD15010aaa");
 
     // 1. Get Interest Rate
     const interestRaw = await vault.InterestRate();
 
-    // 2. Formats interestRaw from bigNumber to integer and divide it by 100.
-    const interestFormated = (((interestRaw.mul(100)).div(ethers.utils.parseEther("1"))).toNumber())/100;
+    // 2. Formats interestRaw from bigNumber to integer.
+    const interestFormated = (((interestRaw.mul(100)).div(ethers.utils.parseEther("1"))).toNumber());
 
-    // 3. Get the formated value and use the APR function to calculate the APR.
-    const finalAPR = APR(interestFormated);
+    console.log("finalAPR: ", interestFormated);
 }
 
 main()

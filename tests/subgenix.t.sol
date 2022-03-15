@@ -109,6 +109,14 @@ contract SubgenixTest is DSTestPlus {
         assertEq(token.allowance(owner, address(0xCAFE)), 1e18);
         assertEq(token.nonces(owner), 1);
     }
+
+    function testSetManager() public {
+        ERC20User owner = new ERC20User(token);
+
+        token.setManager(address(owner), true);
+
+        assertTrue(token.managers(address(owner)));
+    }
     
     /*///////////////////////////////////////////////////////////////
                               FUZZ-TESTING
@@ -222,6 +230,13 @@ contract SubgenixTest is DSTestPlus {
         assertEq(token.nonces(owner), 1);
     }
 
+    function testSetManager(address owner) public {
+
+        token.setManager(address(owner), true);
+
+        assertTrue(token.managers(address(owner)));
+    }
+
     /*///////////////////////////////////////////////////////////////
                               TEST-FAIL
     //////////////////////////////////////////////////////////////*/
@@ -245,6 +260,14 @@ contract SubgenixTest is DSTestPlus {
         token.mint(address(from), 0.9e18);
         from.approve(address(this), 1e18);
         token.transferFrom(address(from), address(0xBEEF), 1e18);
+    }
+
+
+    function testFailSetManagerNotOwner() public {
+        ERC20User user = new ERC20User(token);
+
+        hevm.prank(address(user));
+        token.setManager(address(user), true);
     }
 
     function testFailPermitBadNonce() public {
@@ -471,6 +494,12 @@ contract SubgenixTest is DSTestPlus {
 
         token.permit(owner, to, amount, deadline, v, r, s);
         token.permit(owner, to, amount, deadline, v, r, s);
+    }
+
+    function testFailSetManagerNotOwner(address user) public {
+
+        hevm.prank(user);
+        token.setManager(user, true);
     }
 
 }
