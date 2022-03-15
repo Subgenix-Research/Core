@@ -51,11 +51,11 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     
     // Vault Leagues.
     enum VaultLeague {
-        league0, //
-        league1, //
-        league2, //
-        league3, //
-        league4  //
+        league0, // Avalanche Defender
+        league1, // Subnet Soldier
+        league2, // Network Warrior
+        league3, // Consensus Master
+        league4  // Royal Validator
     }
 
     // Vault's info.
@@ -114,7 +114,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @notice Time you have to wait to colect rewards again.
     uint256 public rewardsWaitTime;
 
-    /// @notice Used to boost users SGX. 
+    /// @notice Used to boost users SGX.
     /// @dev Multiplies users SGX (amount * networkBoost) when
     ///      depositing/creating a vault.
     uint8 public NetworkBoost;
@@ -163,6 +163,13 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @param percentage uint256, the new percentage.
     function setgSGXDistributed(uint256 percentage) external onlyOwner {
         GSGXDistributed = percentage;
+    }
+
+    /// @notice Updates the time user will have to wait to claim rewards
+    ///         again.
+    /// @param time uint256, the new wait time.
+    function setRewardsWaitTime(uint256 time) external onlyOwner {
+        rewardsWaitTime = time;
     }
 
     // <--------------------------------------------------------> //
@@ -267,28 +274,22 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @param user address, the user we are deliting the vault.
     function liquidateVault(address user) external nonReentrant {
         require(msg.sender == user, "You can only liquidate your own vault.");
-        Vault memory userVault = UsersVault[user];
-        require(userVault.exists == true, "You don't have a vault.");
+        require(UsersVault[user].exists == true, "You don't have a vault.");
 
         // 1. Claim all available rewards.
-        uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
+        uint256 timeElapsed = block.timestamp - UsersVault[user].lastClaimTime;
 
         uint256 rewardsPercent = (timeElapsed).mulDiv(InterestRate, baseTime);
 
-        uint256 claimableRewards = (userVault.balance).mulDiv(rewardsPercent, scale) + userVault.pendingRewards;
+        uint256 claimableRewards = (UsersVault[user].balance).mulDiv(rewardsPercent, scale) + UsersVault[user].pendingRewards;
 
         distributeRewards(claimableRewards,  user);
 
         // Calculate liquidateVaultPercent of user's vault balance.
-        uint256 sgxPercent = (userVault.balance).mulDiv(LiquidateVaultPercent, scale);
+        uint256 sgxPercent = (UsersVault[user].balance).mulDiv(LiquidateVaultPercent, scale);
 
         // Delete user vault.
-        userVault.exists = false;
-        userVault.lastClaimTime = block.timestamp;
-        userVault.pendingRewards = 0;
-        userVault.balance = 0;
-
-        UsersVault[user] = userVault;
+        delete UsersVault[user];
 
         ProtocolDebt += sgxPercent;
         TotalNetworkVaults -= 1;
@@ -606,7 +607,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @param pendingRewards uint256, rewards user didn't collected yet.
     /// @param balance uint256,        user's vault balance.
     /// @param league VaultLeague,     league user's vault is part of.
-    function getVaultInfo(address user) public view returns(
+    function getVaultInfo(address user) external view returns(
         uint256 lastClaimTime, 
         uint256 pendingRewards, 
         uint256 balance, 
@@ -623,14 +624,14 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @notice Gets the balance in user's vault.
     /// @param user address, the user we are checking the balance of.
     /// @return The balance of the user.
-    function getUserBalance(address user) public view returns (uint256) {
+    function getUserBalance(address user) external view returns (uint256) {
         return UsersVault[user].balance;
     }
 
     /// @notice Gets the league user's vault is part of.
     /// @param user address, the user we are checking the league of.
     /// @return The user's vault league.
-    function getUserLeague(address user) public view returns (VaultLeague) {
+    function getUserLeague(address user) external view returns (VaultLeague) {
         return UsersVault[user].league;
     }
 

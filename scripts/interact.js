@@ -1,31 +1,15 @@
 async function main() {
 
     const [owner] = await ethers.getSigners();
-
-    const Subgenix = await ethers.getContractFactory("Subgenix");
-    const sgx = await Subgenix.attach("0xeBA009AAB3AF18BBc8D82a799f9507A804aF1C90");
-
-    const GSGX = await ethers.getContractFactory("gSGX");
-    const gsgx = await GSGX.attach("0x498aDB48AaE5dd44A681D8A8C27040930cc12c96");
-
-    // Example of amount being deposited.
-    const depositAmount = ethers.utils.parseEther("1");
-
-    const totalSGX = await sgx.balanceOf(gsgx.address);
-
-    const totalSupplyGSGX = await gsgx.totalSupply();
-
-    var toValue;
     
-    if (totalSGX == 0 || totalSupplyGSGX == 0) {
-        toValue = depositAmount;
-    } else {
-        // toValue = (depositAmount * totalSupplyGSGX) / totalSGX;
-        toValue = (depositAmount.mul(totalSupplyGSGX)).div(totalSGX);
-    }
+    const VaultFactory = await ethers.getContractFactory("VaultFactory");
+    const vault = await VaultFactory.attach("0xf2984227CCa59b54f93cAd5E0e0b96b35BfD48DC");
 
-    console.log(toValue);
-    
+    // Returns true if user's vault exists. false otherwise.
+    const exists = await vault.vaultExists(owner.address);
+
+    // Returns true if user can claim rewards. false otherwise.
+    const canClaim = await vault.canClaimRewards(owner.address);
 }
 
 main()

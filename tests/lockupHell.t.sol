@@ -52,6 +52,8 @@ contract LockUpHellTest is DSTest {
         vault.setgSGXPercent(13e16);        // Percentage of rewards converted to gSGX 13e16 = 13%.
         vault.setgSGXDistributed(5e16);     // Percentage of rewards sent to the gSGX contract. 5e16 = 5%.
         vault.setMinVaultDeposit(1e18);    // Minimum amount required to deposite in Vault.
+        vault.setNetworkBoost(1);           // SGX booster.
+        vault.setRewardsWaitTime(24 hours); // rewards wait time.
 
         SGX.setManager(address(vault), true);
         SGX.setManager(msg.sender, true);

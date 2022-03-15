@@ -74,6 +74,7 @@ async function main() {
     await (await vault.setgSGXDistributed(ethers.utils.parseUnits("5", 16))).wait(); // 5e16 = 05%
     await (await vault.setMinVaultDeposit(ethers.utils.parseEther("1"))).wait();
     await (await vault.setNetworkBoost(1)).wait();
+    await (await vault.setRewardsWaitTime(0)).wait(); // No time so we can test.
 
     console.log("   set token manager..");
     await (await SGX.setManager(vault.address, true)).wait();
