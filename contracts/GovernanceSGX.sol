@@ -8,7 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @title Governance SGX.
 /// @author Subgenix Research.
 /// @notice This is the offical governance token of the Subgenix network. 
-contract gSGX is ERC20, Ownable {
+contract GovernanceSGX is ERC20, Ownable {
 
     // <--------------------------------------------------------> //
     // <------------------------ EVENTS ------------------------> //
@@ -27,14 +27,14 @@ contract gSGX is ERC20, Ownable {
 
     /// @notice Emitted when the withdraw ceil is updated.
     /// @param _ceil uint256, the new withdraw ceil value.
-    event withdrawCeilSet(uint256 _ceil);
+    event WithdrawCeilSet(uint256 _ceil);
 
     // <--------------------------------------------------------> //
     // <------------------- GLOBAL VARIABLES -------------------> //
     // <--------------------------------------------------------> // 
 
     /// @notice Subgenix Network offical token.
-    IERC20 public immutable SGX;
+    IERC20 public immutable sgx;
 
     /// @notice The withdraw ceiling, manually updated by devs.
     uint256 public withdrawCeil;
@@ -42,7 +42,7 @@ contract gSGX is ERC20, Ownable {
     constructor(
         address _sgx
     ) ERC20("Governance SGX", "gSGX", 18) {
-        SGX = IERC20(_sgx);
+        sgx = IERC20(_sgx);
     }
 
     // <--------------------------------------------------------> //
@@ -50,43 +50,43 @@ contract gSGX is ERC20, Ownable {
     // <--------------------------------------------------------> // 
 
     /// @notice Locks SGX and mints gSGX.
-    /// @param _to address, user we are sending the gSGX to.
-    /// @param _amount uint256, the amount of SGX that will be locked.
-    function deposit(address _to, uint256 _amount) external {
+    /// @param to address, user we are sending the gSGX to.
+    /// @param amount uint256, the amount of SGX that will be locked.
+    function deposit(address to, uint256 amount) external {
         // Gets the amount of SGX locked in the contract
-        uint256 totalSGX = SGX.balanceOf(address(this));
+        uint256 totalSGX = sgx.balanceOf(address(this));
 
         // Get the amount of gSGX in existence
         uint256 totalShares = totalSupply;
 
         // If no gSGX exists, mint it 1:1 to the amonut put in
         if (totalShares == 0 || totalSGX == 0) {
-            _mint(_to, _amount);
+            _mint(to, amount);
         } else {
             // Calculate and mint the amount of gSGX the SGX is worth.
-            uint256 value = (_amount * totalShares) / totalSGX;
-            _mint(_to, value);
+            uint256 value = (amount * totalShares) / totalSGX;
+            _mint(to, value);
         }
 
-        // Lock the SGX in the contract
-        bool success = SGX.transferFrom(msg.sender, address(this), _amount);
-        require(success, "Failed to transfer SGX to gSGX contract.");
+        emit Deposit(msg.sender, amount);
 
-        emit Deposit(msg.sender, _amount);
+        // Lock the SGX in the contract
+        bool success = sgx.transferFrom(msg.sender, address(this), amount);
+        require(success, "Failed to transfer SGX to gSGX contract.");
     }
 
     /// @notice Unlocks the staked + gained SGX and burns gSGX.
-    /// @param _share uint256, the amount of gSGX that will be burned from user.
-    function withdraw(uint256 _share) external {
+    /// @param share uint256, the amount of gSGX that will be burned from user.
+    function withdraw(uint256 share) external {
 
         // Gets the amount of SGX locked in the contract
-        uint256 totalSGX = SGX.balanceOf(address(this));
+        uint256 totalSGX = sgx.balanceOf(address(this));
 
         // Get the amount of gSGX in existence
         uint256 totalShares = totalSupply;
 
         // Calculate the amount of gSGX the SGX is worth.
-        uint256 amount = (_share * totalSGX) / totalShares;
+        uint256 amount = (share * totalSGX) / totalShares;
 
         // Check with withdraw ceiling wasn't hit yet.
         require(withdrawCeil >= amount, "Amount hitting withdraw ceil.");
@@ -94,19 +94,19 @@ contract gSGX is ERC20, Ownable {
         withdrawCeil -= amount;
         
         // burn gSGX
-        _burn(msg.sender, _share);
+        _burn(msg.sender, share);
+
+        emit Withdraw(msg.sender, amount, share);
 
         // Transfer user's SGX.
-        bool success = SGX.transfer(msg.sender, amount);
+        bool success = sgx.transfer(msg.sender, amount);
         require(success, "Failed transfering SGX to user.");
-
-        emit Withdraw(msg.sender, amount, _share);
     }
 
     /// @notice Updates the withdraw ceil value.
     /// @param _ceil uint256, the new withdraw ciel.
     function setWithdrawCeil(uint256 _ceil) external onlyOwner {
         withdrawCeil = _ceil;
-        emit withdrawCeilSet(_ceil);
+        emit WithdrawCeilSet(_ceil);
     }
 }

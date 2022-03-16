@@ -6,18 +6,18 @@ import {Subgenix} from "../contracts/Subgenix.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
 import {LockUpHell} from "../contracts/lockupHell.sol";
 import {Hevm} from "./utils/Hevm.sol";
-import {gSGX} from "../contracts/gSGX.sol";
+import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
 
 
 contract gSGXTest is DSTest {
     Hevm hevm = Hevm(HEVM_ADDRESS);
     Subgenix SGX;
-    gSGX gsgx;
+    GovernanceSGX gsgx;
     address Treasury = address(0xBEEF);
 
     function setUp() public {
         SGX = new Subgenix("Subgenix Currency", "SGX", 18);
-        gsgx = new gSGX(address(SGX));
+        gsgx = new GovernanceSGX(address(SGX));
 
         SGX.setManager(msg.sender, true);
 
@@ -30,7 +30,7 @@ contract gSGXTest is DSTest {
     //////////////////////////////////////////////////////////////*/
 
     function testMetaData() public {
-        assertEq(address(gsgx.SGX()), address(SGX));
+        assertEq(address(gsgx.sgx()), address(SGX));
     }
 
     function testDeposit() public {

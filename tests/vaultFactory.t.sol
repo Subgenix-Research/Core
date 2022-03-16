@@ -8,7 +8,7 @@ import {VaultFactory} from "../contracts/VaultFactory.sol";
 import {LockUpHell} from "../contracts/lockupHell.sol";
 import {FullMath} from "../contracts/utils/FullMath.sol";
 import {Hevm} from "./utils/Hevm.sol";
-import {gSGX} from "../contracts/gSGX.sol";
+import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
 
 
 contract VaultFactoryTest is DSTest {
@@ -16,7 +16,7 @@ contract VaultFactoryTest is DSTest {
     VaultFactory vault;
     LockUpHell lockup;
     Subgenix SGX;
-    gSGX GSGX;
+    GovernanceSGX GSGX;
     address Treasury = address(0xBEEF);
     address Research = address(0xABCD);
 
@@ -27,7 +27,7 @@ contract VaultFactoryTest is DSTest {
         
         lockup = new LockUpHell(address(SGX));
         
-        GSGX = new gSGX(address(SGX));
+        GSGX = new GovernanceSGX(address(SGX));
         
         vault = new VaultFactory(
             address(SGX),      // Underlying token.
@@ -61,10 +61,10 @@ contract VaultFactoryTest is DSTest {
     //////////////////////////////////////////////////////////////*/
     
     function testMetaData() public { 
-        assertEq(address(vault.SGX()), address(SGX)); 
-        assertEq(vault.Treasury(), Treasury); 
-        assertEq(vault.MinVaultDeposit(), 1e18); 
-        assertEq(vault.InterestRate(), 1e17);
+        assertEq(address(vault.sgx()), address(SGX)); 
+        assertEq(vault.treasury(), Treasury); 
+        assertEq(vault.minVaultDeposit(), 1e18); 
+        assertEq(vault.interestRate(), 1e17);
     }
 
     function testCreateVault() public {
@@ -72,7 +72,7 @@ contract VaultFactoryTest is DSTest {
         uint256 amount = 200e18;
         uint256 balance;
         
-        assertEq(vault.TotalNetworkVaults(), 0);
+        assertEq(vault.totalNetworkVaults(), 0);
  
         // 1. Mint token to account.
         SGX.mint(address(user), amount);
@@ -88,7 +88,7 @@ contract VaultFactoryTest is DSTest {
 
         ( , , balance, ) = vault.getVaultInfo(address(user));
 
-        assertEq(vault.TotalNetworkVaults(), 1);
+        assertEq(vault.totalNetworkVaults(), 1);
         assertEq(SGX.balanceOf(Treasury), amount);
         assertEq(balance, amount);
         assertEq(SGX.balanceOf(address(user)), balanceBefore - amount);
@@ -147,13 +147,13 @@ contract VaultFactoryTest is DSTest {
         // 3. Impersonate user. 
         vault.createVault(amount);
         
-        (exists, , , , , ) = vault.UsersVault(address(user));
+        (exists, , , , , ) = vault.usersVault(address(user));
 
         assertTrue(exists);
 
         vault.liquidateVault(address(user));
 
-        (exists, , , , , ) = vault.UsersVault(address(user));
+        (exists, , , , , ) = vault.usersVault(address(user));
 
         assertTrue(!exists);
 
@@ -187,11 +187,11 @@ contract VaultFactoryTest is DSTest {
         hevm.warp(block.timestamp + 365 days); // Should receive 10% rewards.
 
         uint256 reward = 1e17; // 10%
-        uint256 burnAmount = reward.mulDiv(vault.BurnPercent(), 1e18); 
+        uint256 burnAmount = reward.mulDiv(vault.burnPercent(), 1e18); 
         uint256 lockup7    = reward.mulDiv(lockup.getShortPercentage(), 1e18); 
         uint256 lockup18   = reward.mulDiv(lockup.getLongPercentage(), 1e18); 
-        uint256 gSGXDistributed = reward.mulDiv(vault.GSGXDistributed(), 1e18);
-        uint256 gSGXPercentage = reward.mulDiv(vault.GSGXPercent(), 1e18);
+        uint256 gSGXDistributed = reward.mulDiv(vault.gSGXDistributed(), 1e18);
+        uint256 gSGXPercentage = reward.mulDiv(vault.gSGXPercent(), 1e18);
 
         reward -= burnAmount;
         reward -= lockup7;

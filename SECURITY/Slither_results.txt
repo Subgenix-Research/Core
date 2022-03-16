@@ -1,0 +1,159 @@
+FullMath.mulDiv(uint256,uint256,uint256) (contracts/utils/FullMath.sol#17-109) performs a multiplication on the result of a division:
+	-denominator = denominator / twos (contracts/utils/FullMath.sol#70)
+	-inv = (3 * denominator) ^ 2 (contracts/utils/FullMath.sol#90)
+FullMath.mulDiv(uint256,uint256,uint256) (contracts/utils/FullMath.sol#17-109) performs a multiplication on the result of a division:
+	-denominator = denominator / twos (contracts/utils/FullMath.sol#70)
+	-inv *= 2 - denominator * inv (contracts/utils/FullMath.sol#94)
+FullMath.mulDiv(uint256,uint256,uint256) (contracts/utils/FullMath.sol#17-109) performs a multiplication on the result of a division:
+	-denominator = denominator / twos (contracts/utils/FullMath.sol#70)
+	-inv *= 2 - denominator * inv (contracts/utils/FullMath.sol#95)
+FullMath.mulDiv(uint256,uint256,uint256) (contracts/utils/FullMath.sol#17-109) performs a multiplication on the result of a division:
+	-denominator = denominator / twos (contracts/utils/FullMath.sol#70)
+	-inv *= 2 - denominator * inv (contracts/utils/FullMath.sol#96)
+FullMath.mulDiv(uint256,uint256,uint256) (contracts/utils/FullMath.sol#17-109) performs a multiplication on the result of a division:
+	-denominator = denominator / twos (contracts/utils/FullMath.sol#70)
+	-inv *= 2 - denominator * inv (contracts/utils/FullMath.sol#97)
+FullMath.mulDiv(uint256,uint256,uint256) (contracts/utils/FullMath.sol#17-109) performs a multiplication on the result of a division:
+	-denominator = denominator / twos (contracts/utils/FullMath.sol#70)
+	-inv *= 2 - denominator * inv (contracts/utils/FullMath.sol#98)
+FullMath.mulDiv(uint256,uint256,uint256) (contracts/utils/FullMath.sol#17-109) performs a multiplication on the result of a division:
+	-denominator = denominator / twos (contracts/utils/FullMath.sol#70)
+	-inv *= 2 - denominator * inv (contracts/utils/FullMath.sol#99)
+FullMath.mulDiv(uint256,uint256,uint256) (contracts/utils/FullMath.sol#17-109) performs a multiplication on the result of a division:
+	-prod0 = prod0 / twos (contracts/utils/FullMath.sol#75)
+	-result = prod0 * inv (contracts/utils/FullMath.sol#107)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply
+
+GovernanceSGX.deposit(address,uint256) (contracts/GovernanceSGX.sol#55-76) uses a dangerous strict equality:
+	- totalShares == 0 || totalSGX == 0 (contracts/GovernanceSGX.sol#63)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+
+VaultFactory.swapSGXforAVAX(uint256) (contracts/VaultFactory.sol#456-471) ignores return value by joeRouter.swapExactTokensForAVAX(toTreasury,0,path,treasury,block.timestamp) (contracts/VaultFactory.sol#469)
+VaultFactory.swapSGXforAVAX(uint256) (contracts/VaultFactory.sol#456-471) ignores return value by joeRouter.swapExactTokensForAVAX(toResearch,0,path,research,block.timestamp) (contracts/VaultFactory.sol#470)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+
+Modifier VaultFactory.stopInEmergency() (contracts/VaultFactory.sol#58) does not always execute _; or revertReference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-modifier
+
+ERC20.permit(address,address,uint256,uint256,uint8,bytes32,bytes32) (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#119-149) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(deadline >= block.timestamp,PERMIT_DEADLINE_EXPIRED) (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#128)
+VaultFactory.createVault(uint256) (contracts/VaultFactory.sol#275-311) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(! usersVault[msg.sender].exists,User already has a Vault.) (contracts/VaultFactory.sol#276)
+VaultFactory.depositInVault(uint256) (contracts/VaultFactory.sol#315-369) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(userVault.exists,You don't have a vault.) (contracts/VaultFactory.sol#318)
+VaultFactory.liquidateVault(address) (contracts/VaultFactory.sol#373-398) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(usersVault[user].exists,You don't have a vault.) (contracts/VaultFactory.sol#375)
+VaultFactory.getPastInterestRates(uint256,uint256,uint256) (contracts/VaultFactory.sol#408-429) uses timestamp for comparisons
+	Dangerous comparisons:
+	- i < pastInterestRates.length (contracts/VaultFactory.sol#419)
+VaultFactory.claimRewards(address) (contracts/VaultFactory.sol#523-553) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(userVault.exists,You don't have a vault.) (contracts/VaultFactory.sol#527)
+	- require(bool,string)((block.timestamp - userVault.lastClaimTime) >= rewardsWaitTime,To early to claim rewards.) (contracts/VaultFactory.sol#528)
+VaultFactory.distributeRewards(uint256,address) (contracts/VaultFactory.sol#559-592) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(success,Failed to approve gSGX contract to spend SGX.) (contracts/VaultFactory.sol#581)
+	- require(bool,string)(success,Failed to send SGX to gSGX contract.) (contracts/VaultFactory.sol#586)
+	- require(bool,string)(success,Failed to send SGX to user.) (contracts/VaultFactory.sol#589)
+VaultFactory.viewPendingRewards(address) (contracts/VaultFactory.sol#623-671) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(usersVault[user].exists,You don't have a vault.) (contracts/VaultFactory.sol#624)
+	- pastInterestRates.length != interestLength (contracts/VaultFactory.sol#639)
+VaultFactory.getVaultInfo(address) (contracts/VaultFactory.sol#710-722) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(usersVault[user].exists,Vault doens't exist.) (contracts/VaultFactory.sol#716)
+VaultFactory.canClaimRewards(address) (contracts/VaultFactory.sol#748-756) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(usersVault[user].exists,Vault doens't exist.) (contracts/VaultFactory.sol#749)
+	- (block.timestamp - lastClaimTime) >= rewardsWaitTime (contracts/VaultFactory.sol#753)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+
+FullMath.mulDiv(uint256,uint256,uint256) (contracts/utils/FullMath.sol#17-109) uses assembly
+	- INLINE ASM (contracts/utils/FullMath.sol#29-33)
+	- INLINE ASM (contracts/utils/FullMath.sol#38-40)
+	- INLINE ASM (contracts/utils/FullMath.sol#55-57)
+	- INLINE ASM (contracts/utils/FullMath.sol#59-62)
+	- INLINE ASM (contracts/utils/FullMath.sol#69-71)
+	- INLINE ASM (contracts/utils/FullMath.sol#74-76)
+	- INLINE ASM (contracts/utils/FullMath.sol#80-82)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+
+Different versions of Solidity is used:
+	- Version used: ['>=0.8.0', '>=0.8.0<0.9.0', '^0.8.0']
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/access/Ownable.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4)
+	- ^0.8.0 (node_modules/@openzeppelin/contracts/utils/Context.sol#4)
+	- >=0.8.0 (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#2)
+	- >=0.8.0<0.9.0 (contracts/GovernanceSGX.sol#2)
+	- >=0.8.0<0.9.0 (contracts/Subgenix.sol#2)
+	- >=0.8.0<0.9.0 (contracts/VaultFactory.sol#2)
+	- >=0.8.0<0.9.0 (contracts/interfaces/ExtendedIERC20.sol#2)
+	- >=0.8.0<0.9.0 (contracts/interfaces/IJoeRouter01.sol#3)
+	- >=0.8.0<0.9.0 (contracts/interfaces/IJoeRouter02.sol#2)
+	- >=0.8.0<0.9.0 (contracts/interfaces/ILockupHell.sol#2)
+	- >=0.8.0<0.9.0 (contracts/interfaces/IgSGX.sol#2)
+	- >=0.8.0<0.9.0 (contracts/lockupHell.sol#2)
+	- >=0.8.0<0.9.0 (contracts/utils/FullMath.sol#2)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+
+Pragma version>=0.8.0<0.9.0 (contracts/interfaces/IVaultFactory.sol#2) is too complex
+solc-0.8.0 is not recommended for deployment
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/access/Ownable.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4) allows old versions
+Pragma version^0.8.0 (node_modules/@openzeppelin/contracts/utils/Context.sol#4) allows old versions
+Pragma version>=0.8.0 (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#2) allows old versions
+Pragma version>=0.8.0<0.9.0 (contracts/GovernanceSGX.sol#2) is too complex
+Pragma version>=0.8.0<0.9.0 (contracts/Subgenix.sol#2) is too complex
+Pragma version>=0.8.0<0.9.0 (contracts/VaultFactory.sol#2) is too complex
+Pragma version>=0.8.0<0.9.0 (contracts/interfaces/ExtendedIERC20.sol#2) is too complex
+Pragma version>=0.8.0<0.9.0 (contracts/interfaces/IJoeRouter01.sol#3) is too complex
+Pragma version>=0.8.0<0.9.0 (contracts/interfaces/IJoeRouter02.sol#2) is too complex
+Pragma version>=0.8.0<0.9.0 (contracts/interfaces/ILockupHell.sol#2) is too complex
+Pragma version>=0.8.0<0.9.0 (contracts/interfaces/IgSGX.sol#2) is too complex
+Pragma version>=0.8.0<0.9.0 (contracts/lockupHell.sol#2) is too complex
+Pragma version>=0.8.0<0.9.0 (contracts/utils/FullMath.sol#2) is too complex
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+
+GovernanceSGX (contracts/GovernanceSGX.sol#11-112) should inherit from IgSGX (contracts/interfaces/IgSGX.sol#4-9)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-inheritance
+
+Function ERC20.DOMAIN_SEPARATOR() (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#151-153) is not in mixedCase
+Variable ERC20.INITIAL_CHAIN_ID (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#44) is not in mixedCase
+Variable ERC20.INITIAL_DOMAIN_SEPARATOR (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#46) is not in mixedCase
+Parameter GovernanceSGX.setWithdrawCeil(uint256)._ceil (contracts/GovernanceSGX.sol#108) is not in mixedCase
+Event VaultFactoryleagueAmountUpdated(uint8,uint256) (contracts/VaultFactory.sol#135) is not in CapWords
+Function IJoeRouter01.WAVAX() (contracts/interfaces/IJoeRouter01.sol#8) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+
+Variable VaultFactory.league0Amount (contracts/VaultFactory.sol#167) is too similar to VaultFactory.league1Amount (contracts/VaultFactory.sol#170)
+Variable VaultFactory.league0Amount (contracts/VaultFactory.sol#167) is too similar to VaultFactory.league2Amount (contracts/VaultFactory.sol#173)
+Variable VaultFactory.league0Amount (contracts/VaultFactory.sol#167) is too similar to VaultFactory.league3Amount (contracts/VaultFactory.sol#176)
+Variable VaultFactory.league1Amount (contracts/VaultFactory.sol#170) is too similar to VaultFactory.league2Amount (contracts/VaultFactory.sol#173)
+Variable VaultFactory.league1Amount (contracts/VaultFactory.sol#170) is too similar to VaultFactory.league3Amount (contracts/VaultFactory.sol#176)
+Variable VaultFactory.league2Amount (contracts/VaultFactory.sol#173) is too similar to VaultFactory.league3Amount (contracts/VaultFactory.sol#176)
+Variable IJoeRouter01.addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256).amountADesired (contracts/interfaces/IJoeRouter01.sol#13) is too similar to IJoeRouter01.addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256).amountBDesired (contracts/interfaces/IJoeRouter01.sol#14)
+Variable LockUpHell.lockupRewards(address,uint256,uint256).userLockups (contracts/lockupHell.sol#137) is too similar to LockUpHell.usersLockup (contracts/lockupHell.sol#86)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#variable-names-are-too-similar
+
+renounceOwnership() should be declared external:
+	- Ownable.renounceOwnership() (node_modules/@openzeppelin/contracts/access/Ownable.sol#54-56)
+transferOwnership(address) should be declared external:
+	- Ownable.transferOwnership(address) (node_modules/@openzeppelin/contracts/access/Ownable.sol#62-65)
+approve(address,uint256) should be declared external:
+	- ERC20.approve(address,uint256) (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#71-77)
+transfer(address,uint256) should be declared external:
+	- ERC20.transfer(address,uint256) (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#79-91)
+transferFrom(address,address,uint256) should be declared external:
+	- ERC20.transferFrom(address,address,uint256) (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#93-113)
+permit(address,address,uint256,uint256,uint8,bytes32,bytes32) should be declared external:
+	- ERC20.permit(address,address,uint256,uint256,uint8,bytes32,bytes32) (node_modules/@rari-capital/solmate/src/tokens/ERC20.sol#119-149)
+claimRewards(address) should be declared external:
+	- VaultFactory.claimRewards(address) (contracts/VaultFactory.sol#523-553)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#public-function-that-could-be-declared-external

@@ -3,13 +3,9 @@ async function main() {
     const [owner] = await ethers.getSigners();
     
     const VaultFactory = await ethers.getContractFactory("VaultFactory");
-    const vault = await VaultFactory.attach("0xf2984227CCa59b54f93cAd5E0e0b96b35BfD48DC");
+    const vault = await VaultFactory.attach("0xFa5699D2dcB2E16E897cC20C2FA35A6870d7E948");
 
-    // Returns true if user's vault exists. false otherwise.
-    const exists = await vault.vaultExists(owner.address);
-
-    // Returns true if user can claim rewards. false otherwise.
-    const canClaim = await vault.canClaimRewards(owner.address);
+    await vault.liquidateVault(owner.address);
 }
 
 main()

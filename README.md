@@ -21,8 +21,16 @@ clean: `make clean`
 
 ## Security:
 
-[Slither](https://github.com/crytic/slither) was used as a static analyzer to
-search for vulnerabilities in the contract.
+To run the following security tools you need to first create a python environment:
 
+1. Install [Python](https://www.python.org/downloads/).
+2. In this directory, create a python environment: `python3 -m venv env`.
+3. Start the environment: `source env/bin/activate`.
+4. Install all requirements: `pip install -r requirements.txt`.
 
-run: `slither --hardhat-ignore-compile .`   
+You are ready to go!
+
+We used [Slither](https://github.com/crytic/slither) as a static analyzer to
+search for vulnerabilities in the contract. You can check out the results 
+[here](SECURITY/Slither_results.txt). If you want to run it on your local machine 
+use the command `slither .`.

@@ -6,14 +6,14 @@ import {Subgenix} from "../contracts/Subgenix.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
 import {LockUpHell} from "../contracts/lockupHell.sol";
 import {Hevm} from "./utils/Hevm.sol";
-import {gSGX} from "../contracts/gSGX.sol";
+import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
 
 contract LockUpHellTest is DSTest {
     Hevm hevm = Hevm(HEVM_ADDRESS);
     VaultFactory vault;
     LockUpHell lockup;
     Subgenix SGX;
-    gSGX gsgx;
+    GovernanceSGX gsgx;
     address Treasury = address(0xBEEF);
     address Research = address(0xABCD);
 
@@ -31,7 +31,7 @@ contract LockUpHellTest is DSTest {
     
     function setUp() public {
         SGX = new Subgenix("Subgenix Currency", "SGX", 18);
-        gsgx = new gSGX(address(SGX));
+        gsgx = new GovernanceSGX(address(SGX));
         lockup = new LockUpHell(address(SGX));
         
         vault = new VaultFactory(
@@ -67,7 +67,7 @@ contract LockUpHellTest is DSTest {
     //////////////////////////////////////////////////////////////*/
 
     function testMetaData() public {
-        assertEq(lockup.SGX(), address(SGX));
+        assertEq(lockup.sgx(), address(SGX));
     }
 
     function testLockupRewards() public {
@@ -78,13 +78,13 @@ contract LockUpHellTest is DSTest {
         SGX.approve(address(lockup), depositAmount);
 
         // Assert User has 0 lockups before doing anything.
-        assertEq(lockup.UsersLockupLength(msg.sender), 0);
+        assertEq(lockup.usersLockupLength(msg.sender), 0);
         
         hevm.prank(address(vault)); // Impersonate vaultFactory
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
         // Assert User has 1 lockup.
-        uint32 index = lockup.UsersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(msg.sender);
         assertEq(index, 1);
 
         // Assert current balance of SGX == pastAmount - (shortRewards + longRewards)
@@ -99,7 +99,7 @@ contract LockUpHellTest is DSTest {
          userLockup.longLockupPeriod,
          userLockup.shortLockupPeriod,
          userLockup.longRewards,
-         userLockup.shortRewards) = lockup.UsersLockup(msg.sender, index);
+         userLockup.shortRewards) = lockup.usersLockup(msg.sender, index);
 
         // Assert User has not colected longRewards yet.
         assertTrue(!userLockup.longRewardsColected);
@@ -128,7 +128,7 @@ contract LockUpHellTest is DSTest {
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
 
-        uint32 index = lockup.UsersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(msg.sender);
         
         uint256 balanceBefore = SGX.balanceOf(msg.sender);
 
@@ -143,7 +143,7 @@ contract LockUpHellTest is DSTest {
           ,
           ,
           ,
-         userLockup.shortRewards) = lockup.UsersLockup(msg.sender, index);
+         userLockup.shortRewards) = lockup.usersLockup(msg.sender, index);
 
         assertTrue(userLockup.shortRewardsColected);
         assertEq(userLockup.shortRewards, 0);
@@ -165,7 +165,7 @@ contract LockUpHellTest is DSTest {
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
 
-        uint32 index = lockup.UsersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(msg.sender);
         
         uint256 balanceBefore = SGX.balanceOf(msg.sender);
 
@@ -179,7 +179,7 @@ contract LockUpHellTest is DSTest {
           ,
           ,
          userLockup.longRewards,
-          ) = lockup.UsersLockup(msg.sender, index);
+          ) = lockup.usersLockup(msg.sender, index);
 
         assertTrue(userLockup.longRewardsColected);
         assertEq(userLockup.longRewards, 0);
@@ -280,7 +280,7 @@ contract LockUpHellTest is DSTest {
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
 
-        uint32 index = lockup.UsersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(msg.sender);
 
         LockupType memory userLockup;
         
@@ -302,7 +302,7 @@ contract LockUpHellTest is DSTest {
         // Jump 1 day in the future.
         hevm.warp(block.timestamp + 24 hours);
 
-        uint32 index = lockup.UsersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(msg.sender);
         
         lockup.claimShortLockup(msg.sender, index);
     }
@@ -332,7 +332,7 @@ contract LockUpHellTest is DSTest {
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
 
-        uint32 index = lockup.UsersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(msg.sender);
 
         LockupType memory userLockup;
         
@@ -354,7 +354,7 @@ contract LockUpHellTest is DSTest {
         // Jump 1 day in the future.
         hevm.warp(block.timestamp + 24 hours);
 
-        uint32 index = lockup.UsersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(msg.sender);
         
         lockup.claimLongLockup(msg.sender, index);
     }

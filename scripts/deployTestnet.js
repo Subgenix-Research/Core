@@ -80,6 +80,12 @@ async function main() {
     await (await vault.setNetworkBoost(1)).wait();
     await (await vault.setRewardsWaitTime(0)).wait(); // No time so we can test.
 
+    console.log("   set league amounts..");
+    await vault.setLeagueAmount(0, ethers.utils.parseUnits("2000", 18));
+    await vault.setLeagueAmount(1, ethers.utils.parseUnits("5000", 18));
+    await vault.setLeagueAmount(2, ethers.utils.parseUnits("20000", 18));
+    await vault.setLeagueAmount(3, ethers.utils.parseUnits("100000", 18));
+
     console.log("   set token manager..");
     await (await SGX.setManager(vault.address, true)).wait();
     await (await SGX.setManager(owner.address, true)).wait();
