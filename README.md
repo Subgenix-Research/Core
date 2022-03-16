@@ -4,7 +4,6 @@
 
 Subgenix smart contracts.
 
-
 ## Development:
 
 tests: `make test`   
@@ -24,9 +23,10 @@ clean: `make clean`
 To run the following security tools you need to first create a python environment:
 
 1. Install [Python](https://www.python.org/downloads/).
-2. In this directory, create a python environment: `python3 -m venv env`.
-3. Start the environment: `source env/bin/activate`.
-4. Install all requirements: `pip install -r requirements.txt`.
+2. clone and cd into this repo: `git clone https://github.com/Subgenix-Research/Core.git && cd Core/`
+3. In this directory, create a python environment: `python3 -m venv env`.
+4. Start the environment: `source env/bin/activate`.
+5. Install all requirements: `pip install -r requirements.txt`.
 
 You are ready to go!
 

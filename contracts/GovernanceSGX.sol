@@ -33,7 +33,7 @@ contract GovernanceSGX is ERC20, Ownable {
     // <------------------- GLOBAL VARIABLES -------------------> //
     // <--------------------------------------------------------> // 
 
-    /// @notice Subgenix Network offical token.
+    // Subgenix Network offical token.
     IERC20 immutable sgx;
 
     /// @notice The withdraw ceiling, manually updated by devs.

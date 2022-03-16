@@ -150,7 +150,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     ///      depositing/creating a vault.
     uint256 public networkBoost;
 
-    /// @notice Time you have to wait to colect rewards again.
+    // Time you have to wait to colect rewards again.
     uint256 rewardsWaitTime;
 
     // Maximum amount to be part of league 0.
@@ -394,6 +394,39 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         sgx.mint(user, sgxPercent);
     }
 
+    /// @notice Allows owner to create a vault for a specific user.
+    /// @param user address, the user the owner is creating the vault for.
+    /// @param amount uint256, the amount being deposited in the vault.
+    function createOwnerVault(address user, uint256 amount) external onlyOwner {
+        require(!usersVault[user].exists, "User already has a Vault.");
+        require(amount >= minVaultDeposit, "Amount is too small.");
+
+        uint256 amountBoosted = amount * networkBoost;
+
+        VaultLeague tempLeague = getVaultLeague(amountBoosted);
+
+        usersVault[user] = Vault({
+            exists: true,
+            lastClaimTime: block.timestamp,
+            uncollectedRewards: 0,
+            balance: amountBoosted,
+            interestLength: pastInterestRates.length,
+            league: tempLeague
+        });
+
+        totalNetworkVaults += 1;
+
+        bool success = sgx.transferFrom(msg.sender, address(this), amount);
+        require(success, "Failed to transfer SGX to vault.");
+
+        success = sgx.approve(treasury, amount);
+        require(success, "Failed to approve Treasury.");
+        success = sgx.transfer(treasury, amount);
+        require(success, "Failed to transfer SGX to Treasury.");
+
+        emit VaultCreated(user);
+    }
+
     /// @notice Calculates the total interest generated based
     ///         on past interest rates.
     /// @param userInterestLength uint256, the last interest length updated in users vault.
@@ -450,7 +483,10 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     ///         AVAX ready to make the investments and will save the community from seeing
     ///         massive dumps in the price of the token.
     /// @param swapAmount uint256, the amount of SGX we are making the swap.
-    function swapSGXforAVAX(uint256 swapAmount) private onlyOwner {
+    function swapSGXforAVAX(uint256 swapAmount) private {
+
+        bool success = sgx.approve(address(JOE_ROUTER), swapAmount);
+        require(success, "Failed to approve joeRouter.");
 
         address[] memory path;
         path = new address[](2);
@@ -459,9 +495,6 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         uint256 toTreasury = swapAmount.mulDiv(75e16, SCALE);
         uint256 toResearch = swapAmount - toTreasury;
-
-        bool success = sgx.approve(address(JOE_ROUTER), swapAmount);
-        require(success, "Failed to approve joeRouter.");
         
         JOE_ROUTER.swapExactTokensForAVAX(toTreasury, 0, path, treasury, block.timestamp);
         JOE_ROUTER.swapExactTokensForAVAX(toResearch, 0, path, research, block.timestamp);
@@ -492,10 +525,10 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     uint256[] pastInterestRates; // Past interest rates.
     uint256[] timeWhenChanged;   // Last time the interest rate was valid.
 
-    /// @notice the level of reward granularity, WAD
+    // The level of reward granularity, WAD
     uint256 constant SCALE = 1e18;
 
-    /// @notice Base time used to calculate rewards.
+    // Base time used to calculate rewards.
     uint256 constant BASETIME = 365 days;
 
     /// @notice Updates the reward percentage distributed per `BASETIME`

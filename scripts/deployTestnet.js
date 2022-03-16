@@ -1,4 +1,4 @@
-const colors = require("colors");
+require("colors");
 
 async function main() {
 
@@ -28,11 +28,11 @@ async function main() {
     console.log("✓".green + " lockupHell deployed to:", lockup.address);
 
 
-    const GovernanceSGX = await ethers.getContractFactory("gSGX");
+    const GovernanceSGX = await ethers.getContractFactory("GovernanceSGX");
     const gSGX = await GovernanceSGX.deploy(SGX.address);
     await gSGX.deployed();
     
-    console.log("✓".green + " gSGX deployed to:", gSGX.address);
+    console.log("✓".green + " GovernanceSGX deployed to:", gSGX.address);
     
     
     const VaultFactory = await ethers.getContractFactory("VaultFactory");
@@ -78,13 +78,13 @@ async function main() {
     await (await vault.setgSGXDistributed(ethers.utils.parseUnits("5", 16))).wait(); // 05e16 = 05%
     await (await vault.setMinVaultDeposit(ethers.utils.parseUnits("1", 18))).wait(); // 01e18
     await (await vault.setNetworkBoost(1)).wait();
-    await (await vault.setRewardsWaitTime(0)).wait(); // No time so we can test.
+    await (await vault.setRewardsWaitTime(0)).wait(); // No time so we can test. in seconds
 
     console.log("   set league amounts..");
-    await vault.setLeagueAmount(0, ethers.utils.parseUnits("2000", 18));
-    await vault.setLeagueAmount(1, ethers.utils.parseUnits("5000", 18));
-    await vault.setLeagueAmount(2, ethers.utils.parseUnits("20000", 18));
-    await vault.setLeagueAmount(3, ethers.utils.parseUnits("100000", 18));
+    await (await vault.setLeagueAmount(0, ethers.utils.parseUnits("2000", 18))).wait();
+    await (await vault.setLeagueAmount(1, ethers.utils.parseUnits("5000", 18))).wait();
+    await (await vault.setLeagueAmount(2, ethers.utils.parseUnits("20000", 18))).wait();
+    await (await vault.setLeagueAmount(3, ethers.utils.parseUnits("100000", 18))).wait();
 
     console.log("   set token manager..");
     await (await SGX.setManager(vault.address, true)).wait();

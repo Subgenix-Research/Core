@@ -94,7 +94,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     ///         locked up his rewards. The index of the first lockup will be 1, not 0.
     mapping(address => uint32) public usersLockupLength;
 
-    /// @notice Subgenix offical token, minted as a reward after each lockup.
+    // Subgenix offical token, minted as a reward after each lockup.
     address immutable sgx;
 
     // vaultFactory contract address.
@@ -106,7 +106,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         _;
     }
 
-    /// @notice Global rates.
+    // Global rates.
     Rates rates;
     
     constructor(address SGXAddress) {
@@ -130,11 +130,10 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         uint256 longLockupRewards
     ) external nonReentrant onlyVaultFactory {
 
-        // first it checks how many `lockups` the user has, then it sets
+        // first it checks how many `lockups` the user has and sets
         // the next index to be 'length+1' and finally it updates the 
-        // usersLockupLength to be 'length+1'.
-        uint32 userLockups = usersLockupLength[user];
-        uint32 index = userLockups+1;
+        // usersLockupLength to be 'length + 1'.
+        uint32 index = usersLockupLength[user] + 1;
         usersLockupLength[user] = index;
 
         // Add the total value of lockup rewards to the users mapping.
@@ -149,9 +148,7 @@ contract LockUpHell is Ownable, ReentrancyGuard {
                 shortLockupUnlockDate: uint32(block.timestamp) + rates.shortLockupTime,
                 longRewards: longLockupRewards,
                 shortRewards: shortLockupRewards
-            });
-
-        emit RewardsLocked(user, shortLockupRewards, longLockupRewards); 
+        });
 
         // Transfer the rewards that are going to be locked up from the user to this
         // contract. They are placed in the end of the function after all the internal
@@ -161,6 +158,8 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         
         success = ExtendedIERC20(sgx).transferFrom(user, address(this), longLockupRewards);
         require(success, "Failed to transfer SGX to lockupHell.");
+
+        emit RewardsLocked(user, shortLockupRewards, longLockupRewards); 
     }
 
     /// @notice After the shorter lockup period is over, user can claim his rewards using this function.
@@ -169,6 +168,8 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     /// @param user address, the user who is claiming rewards. 
     /// @param index uint32, the index of the `lockup` the user is refering to.
     function claimShortLockup(address user, uint32 index) external nonReentrant {
+        Lockup memory temp = usersLockup[user][index];
+        
         // There are 3 requirements that must be true before the user can claim his
         // short lockup rewards:
         //
@@ -180,12 +181,11 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         //
         // If all three are true, the user can safely colect their short lockup rewards.
         require(usersLockupLength[user] >= index, "Index invalid");
-        require(!usersLockup[user][index].shortRewardsCollected, "Already claimed.");
-        //require(block.timestamp > usersLockup[user][index].shortLockupUnlockDate, "Too early to claim.");
+        require(!temp.shortRewardsCollected, "Already claimed.");
+        //require(block.timestamp > temp.shortLockupUnlockDate, "Too early to claim.");
         require(msg.sender == user, "You can only claim your own rewards.");
 
         // Make a temporary copy of the user `lockup` and get the short lockup rewards amount.
-        Lockup memory temp = usersLockup[user][index];
         uint256 amount = temp.shortRewards;
         
         // Updates status of the shortRewardsCollected to true,
@@ -200,12 +200,11 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         // Takes the amount being transfered out of users total locked mapping.
         usersTotalLocked[user] -= amount;
 
-        emit UnlockShortLockup(user, amount);
-
         // Transfer the short rewards amount to user.
         bool success = ExtendedIERC20(sgx).transfer(user, amount);
         require(success, "Failed to trasfer SGX to user.");
-    
+        
+        emit UnlockShortLockup(user, amount);
     }
 
     /// @notice After the longer lockup period is over, user can claim his rewards using this function.
@@ -214,6 +213,10 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     /// @param user address, the user who is claiming rewards.
     /// @param index uint32, he index of the `lockup` the user is refering to.
     function claimLongLockup(address user, uint32 index) external nonReentrant {
+        
+        // Make a temporary copy of the user `lockup` and get the long lockup rewards amount.
+        Lockup memory temp = usersLockup[user][index];
+        
         // There are 3 requirements that must be true before the user can claim his
         // long lockup rewards:
         //
@@ -225,12 +228,10 @@ contract LockUpHell is Ownable, ReentrancyGuard {
         //
         // If all three are true, the user can safely colect their long lockup rewards.
         require(usersLockupLength[user] >= index, "Index invalid");
-        require(!usersLockup[user][index].longRewardsCollected, "Already claimed.");
-        //require(block.timestamp > usersLockup[user][index].longLockupUnlockDate, "Too early to claim.");
+        require(!temp.longRewardsCollected, "Already claimed.");
+        //require(block.timestamp > temp.longLockupUnlockDate, "Too early to claim.");
         require(msg.sender == user, "You can only claim your own rewards.");
 
-        // Make a temporary copy of the user `lockup` and get the long lockup rewards amount.
-        Lockup memory temp = usersLockup[user][index];
         uint256 amount = temp.longRewards;
         
         // Updates status of the longRewardsCollected to true,
@@ -244,12 +245,12 @@ contract LockUpHell is Ownable, ReentrancyGuard {
 
         // Takes the amount being transfered out of users total locked mapping.
         usersTotalLocked[user] -= amount;
-        
-        emit UnlockLongLockup(user, amount);
 
         // Transfer the long rewards amount to user.
         bool success = ExtendedIERC20(sgx).transfer(user, amount);
         require(success, "Error transfering SGX to user.");
+
+        emit UnlockLongLockup(user, amount);
     }
 
     // <--------------------------------------------------------> //
