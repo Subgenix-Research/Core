@@ -29,10 +29,6 @@ contract gSGXTest is DSTest {
                               UNIT-TESTS 
     //////////////////////////////////////////////////////////////*/
 
-    function testMetaData() public {
-        assertEq(address(gsgx.sgx()), address(SGX));
-    }
-
     function testDeposit() public {
         uint256 deposit = 2e18;
         SGX.mint(msg.sender, 10e18);

@@ -95,10 +95,10 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     mapping(address => uint32) public usersLockupLength;
 
     /// @notice Subgenix offical token, minted as a reward after each lockup.
-    address public immutable sgx;
+    address immutable sgx;
 
     // vaultFactory contract address.
-    address public vaultFactory;
+    address vaultFactory;
 
     // only the vaultFactory address can access function with this modifier.
     modifier onlyVaultFactory() {
@@ -107,10 +107,9 @@ contract LockUpHell is Ownable, ReentrancyGuard {
     }
 
     /// @notice Global rates.
-    Rates public rates;
+    Rates rates;
     
     constructor(address SGXAddress) {
-        require(SGXAddress != address(0), "Can not be zero address");
         sgx = SGXAddress;
     }
 

@@ -72,11 +72,11 @@ async function main() {
 
 
     console.log("   set vault variables..");
-    await (await vault.setInterestRate(ethers.utils.parseUnits("1", 17))).wait();    // 10%
-    await (await vault.setBurnPercent(ethers.utils.parseUnits("2", 16))).wait();     // 2e16 = 02%
+    await (await vault.setInterestRate(ethers.utils.parseUnits("1", 17))).wait();    // 01e17 = 10%
+    await (await vault.setBurnPercent(ethers.utils.parseUnits("2", 16))).wait();     // 02e16 = 02%
     await (await vault.setgSGXPercent(ethers.utils.parseUnits("13", 16))).wait();    // 13e16 = 13%
-    await (await vault.setgSGXDistributed(ethers.utils.parseUnits("5", 16))).wait(); // 5e16 = 05%
-    await (await vault.setMinVaultDeposit(ethers.utils.parseEther("1"))).wait();
+    await (await vault.setgSGXDistributed(ethers.utils.parseUnits("5", 16))).wait(); // 05e16 = 05%
+    await (await vault.setMinVaultDeposit(ethers.utils.parseUnits("1", 18))).wait(); // 01e18
     await (await vault.setNetworkBoost(1)).wait();
     await (await vault.setRewardsWaitTime(0)).wait(); // No time so we can test.
 

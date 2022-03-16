@@ -66,10 +66,6 @@ contract LockUpHellTest is DSTest {
                               UNIT-TESTS 
     //////////////////////////////////////////////////////////////*/
 
-    function testMetaData() public {
-        assertEq(lockup.sgx(), address(SGX));
-    }
-
     function testLockupRewards() public {
         uint256 depositAmount = 10e18;
         SGX.mint(msg.sender, depositAmount);

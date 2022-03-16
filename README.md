@@ -31,6 +31,5 @@ To run the following security tools you need to first create a python environmen
 You are ready to go!
 
 We used [Slither](https://github.com/crytic/slither) as a static analyzer to
-search for vulnerabilities in the contract. You can check out the results 
-[here](SECURITY/Slither_results.txt). If you want to run it on your local machine 
-use the command `slither .`.
+search for vulnerabilities in the contract. If you want to run it on your local
+machine use the command `slither .`.

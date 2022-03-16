@@ -61,7 +61,6 @@ contract VaultFactoryTest is DSTest {
     //////////////////////////////////////////////////////////////*/
     
     function testMetaData() public { 
-        assertEq(address(vault.sgx()), address(SGX)); 
         assertEq(vault.treasury(), Treasury); 
         assertEq(vault.minVaultDeposit(), 1e18); 
         assertEq(vault.interestRate(), 1e17);
