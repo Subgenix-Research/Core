@@ -68,12 +68,12 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
     // Vault's info.
     struct Vault {
-        bool exists;            // vault exists.
-        uint256 lastClaimTime;  // Last claim.
-        uint256 pendingRewards; // All pending rewards.
-        uint256 balance;        // Total Deposited in the vault.
-        uint256 interestLength; // Last interestRates length.
-        VaultLeague league;     // Vault league.
+        bool exists;                // vault exists.
+        uint256 lastClaimTime;      // Last claim.
+        uint256 uncollectedRewards; // All pending rewards.
+        uint256 balance;            // Total Deposited in the vault.
+        uint256 interestLength;     // Last interestRates length.
+        VaultLeague league;         // Vault league.
     }
     
     /// @notice mapping of all users vaults.
@@ -283,7 +283,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         usersVault[msg.sender] = Vault({
             exists: true,
             lastClaimTime: block.timestamp,
-            pendingRewards: 0,
+            uncollectedRewards: 0,
             balance: amountBoosted,
             interestLength: pastInterestRates.length,
             league: tempLeague
@@ -342,7 +342,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         // Update user's vault info
         userVault.lastClaimTime = block.timestamp;
-        userVault.pendingRewards += interest;
+        userVault.uncollectedRewards += interest;
         userVault.balance = totalBalance;
         userVault.league = tempLeague;
 
@@ -379,7 +379,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         uint256 rewardsPercent = (timeElapsed).mulDiv(interestRate, BASETIME);
 
-        uint256 claimableRewards = (usersVault[user].balance).mulDiv(rewardsPercent, SCALE) + usersVault[user].pendingRewards;
+        uint256 claimableRewards = (usersVault[user].balance).mulDiv(rewardsPercent, SCALE) + usersVault[user].uncollectedRewards;
 
         // Calculate liquidateVaultPercent of user's vault balance.
         uint256 sgxPercent = (usersVault[user].balance).mulDiv(liquidateVaultPercent, SCALE);
@@ -542,11 +542,11 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         rewardsPercent = timeElapsed.mulDiv(interestRate, BASETIME);
 
-        claimableRewards += userVault.balance.mulDiv(rewardsPercent, SCALE) + userVault.pendingRewards;
+        claimableRewards += userVault.balance.mulDiv(rewardsPercent, SCALE) + userVault.uncollectedRewards;
 
         // Update user's vault info
         userVault.lastClaimTime = block.timestamp;
-        userVault.pendingRewards = 0;
+        userVault.uncollectedRewards = 0;
         usersVault[msg.sender] = userVault;
 
         distributeRewards(claimableRewards, user);
@@ -646,7 +646,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         rewardsPercent = timeElapsed.mulDiv(interestRate, BASETIME);
 
-        pendingRewards += balance.mulDiv(rewardsPercent, SCALE) + usersVault[user].pendingRewards;
+        pendingRewards += balance.mulDiv(rewardsPercent, SCALE) + usersVault[user].uncollectedRewards;
 
         (uint256 burnAmount,
          uint256 shortLockup,
@@ -703,22 +703,22 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
     /// @notice Get user's vault info.
     /// @param user address, user we are checking the vault.
-    /// @param lastClaimTime uint256,  last time user claimed rewards.
-    /// @param pendingRewards uint256, rewards user didn't collected yet.
-    /// @param balance uint256,        user's vault balance.
-    /// @param league VaultLeague,     league user's vault is part of.
+    /// @param lastClaimTime uint256,      last time user claimed rewards.
+    /// @param uncollectedRewards uint256, rewards user didn't collected yet.
+    /// @param balance uint256,            user's vault balance.
+    /// @param league VaultLeague,         league user's vault is part of.
     function getVaultInfo(address user) external view returns(
         uint256 lastClaimTime, 
-        uint256 pendingRewards, 
+        uint256 uncollectedRewards, 
         uint256 balance, 
         VaultLeague league
         ) {
         require(usersVault[user].exists, "Vault doens't exist.");
 
-        lastClaimTime  = usersVault[user].lastClaimTime;
-        pendingRewards = usersVault[user].pendingRewards;
-        balance        = usersVault[user].balance;
-        league         = usersVault[user].league;
+        lastClaimTime      = usersVault[user].lastClaimTime;
+        uncollectedRewards = usersVault[user].uncollectedRewards;
+        balance            = usersVault[user].balance;
+        league             = usersVault[user].league;
     }
 
     /// @notice Gets the balance in user's vault.
