@@ -56,6 +56,8 @@ Make sure that you have the private key from the deployer address in a `.env` fi
 Follow the example from the [.env.example](.env.example) file.
 
 
-To deploy the contracts in the testnet you run the command: `npx hardhat run scripts/deployTestnet.js --network fuji`.
-
-To deploy the contracts in the mainnet you run the command: `npx hardhat run scripts/deployMainnet.js --network mainnet`.
+To deploy the contracts in the testnet you run the command:   
+`npx hardhat run scripts/deployTestnet.js --network fuji`.
+    
+To deploy the contracts in the mainnet you run the command:   
+`npx hardhat run scripts/deployMainnet.js --network mainnet`.
