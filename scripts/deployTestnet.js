@@ -13,7 +13,7 @@ async function main() {
 
     const Subgenix = await ethers.getContractFactory("Subgenix");
     const SGX = await Subgenix.deploy(
-        "Subgenix Currency",
+        "Subgenix Token",
         "SGX",
         18
     );

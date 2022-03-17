@@ -4,7 +4,6 @@ pragma solidity >= 0.8.0;
 import {DSTest} from "ds-test/test.sol";
 import {Subgenix} from "../contracts/Subgenix.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
-import {LockUpHell} from "../contracts/lockupHell.sol";
 import {Hevm} from "./utils/Hevm.sol";
 import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
 

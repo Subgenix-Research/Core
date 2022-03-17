@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.0 < 0.9.0;
 
-import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 
 /// @title Governance SGX.
 /// @author Subgenix Research.

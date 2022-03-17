@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.0 < 0.9.0;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {FixedPointMathLib} from "@rari-capital/solmate/src/utils/FixedPointMathLib.sol";
+import {ReentrancyGuard} from "@rari-capital/solmate/src/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ExtendedIERC20} from "./interfaces/ExtendedIERC20.sol";
 import {IJoeRouter02} from "./interfaces/IJoeRouter02.sol";
 import {ILockupHell} from "./interfaces/ILockupHell.sol";
-import {FullMath} from "./utils/FullMath.sol";
 import {IgSGX} from "./interfaces/IgSGX.sol";
 
 /// @title Subgenix Vault Factory.
@@ -14,7 +14,7 @@ import {IgSGX} from "./interfaces/IgSGX.sol";
 /// @notice The VaultFactory contract creates and manages user's vaults.
 contract VaultFactory is Ownable, ReentrancyGuard {
 
-    using FullMath for uint256;
+    using FixedPointMathLib for uint256;
     
     // <--------------------------------------------------------> //
     // <----------------------- METADATA -----------------------> //
@@ -77,7 +77,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     
     /// @notice Emitted when a vault is created.
     /// @param user address, owner of the vault.
-    event VaultCreated(address indexed user);
+    event VaultCreated(address indexed user, uint256 timeWhenCreated);
 
     /// @notice Emitted when user successfully deposit in his vault.
     /// @param user address, user that initiated the deposit.
@@ -294,7 +294,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         if (allowTreasurySwap) {
             // Swaps 66% of the amount deposit to AVAX.
-            swapAmount = amount.mulDiv(66e16, SCALE);
+            swapAmount = amount.mulDivDown(66e16, SCALE);
             swapSGXforAVAX(swapAmount);
         }
 
@@ -303,7 +303,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         success = sgx.transfer(treasury, amount - swapAmount);
         require(success, "Failed to transfer SGX to Treasury.");
 
-        emit VaultCreated(msg.sender);
+        emit VaultCreated(msg.sender, block.timestamp);
     }
 
     /// @notice Deposits `amount` of SGX in the vault.
@@ -332,9 +332,9 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         timeElapsed = block.timestamp - userVault.lastClaimTime;
 
-        rewardsPercent = (timeElapsed).mulDiv(interestRate, BASETIME);
+        rewardsPercent = (timeElapsed).mulDivDown(interestRate, BASETIME);
 
-        interest += (userVault.balance).mulDiv(rewardsPercent, SCALE);
+        interest += (userVault.balance).mulDivDown(rewardsPercent, SCALE);
 
         // Update user's vault info
         userVault.lastClaimTime = block.timestamp;
@@ -354,7 +354,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         if (allowTreasurySwap) {
             // Swaps 16% of the amount deposit to AVAX.
-            swapAmount = amount.mulDiv(16e16, SCALE);
+            swapAmount = amount.mulDivDown(16e16, SCALE);
             swapSGXforAVAX(swapAmount);
         }
 
@@ -374,12 +374,12 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         // 1. Claim all available rewards.
         uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
 
-        uint256 rewardsPercent = (timeElapsed).mulDiv(interestRate, BASETIME);
+        uint256 rewardsPercent = (timeElapsed).mulDivDown(interestRate, BASETIME);
 
-        uint256 claimableRewards = (userVault.balance).mulDiv(rewardsPercent, SCALE) + userVault.uncollectedRewards;
+        uint256 claimableRewards = (userVault.balance).mulDivDown(rewardsPercent, SCALE) + userVault.uncollectedRewards;
 
         // Calculate liquidateVaultPercent of user's vault balance.
-        uint256 sgxPercent = (userVault.balance).mulDiv(liquidateVaultPercent, SCALE);
+        uint256 sgxPercent = (userVault.balance).mulDivDown(liquidateVaultPercent, SCALE);
 
         // Delete user vault.
         delete usersVault[user];
@@ -424,7 +424,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         success = sgx.transfer(treasury, amount);
         require(success, "Failed to transfer SGX to Treasury.");
 
-        emit VaultCreated(user);
+        emit VaultCreated(user, block.timestamp);
     }
 
     /// @notice Calculates the total interest generated based
@@ -450,9 +450,9 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         for (interestLength; interestLength < pastInterestLength; interestLength+=1) {
             
             timeElapsed = timeWhenChanged[interestLength] - lastClaimTime;
-            rewardsPercent = timeElapsed.mulDiv(pastInterestRates[interestLength], BASETIME);
-            
-            interest += userBalance.mulDiv(rewardsPercent, SCALE);
+            rewardsPercent = timeElapsed.mulDivDown(pastInterestRates[interestLength], BASETIME);
+
+            interest += userBalance.mulDivDown(rewardsPercent, SCALE);
             
             lastClaimTime = timeWhenChanged[interestLength];
         }
@@ -493,7 +493,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         path[0] = address(sgx);
         path[1] = WAVAX;
 
-        uint256 toTreasury = swapAmount.mulDiv(75e16, SCALE);
+        uint256 toTreasury = swapAmount.mulDivDown(75e16, SCALE);
         uint256 toResearch = swapAmount - toTreasury;
         
         JOE_ROUTER.swapExactTokensForAVAX(toTreasury, 0, path, treasury, block.timestamp);
@@ -572,9 +572,9 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         timeElapsed = block.timestamp - localLastClaimTime;
 
-        rewardsPercent = timeElapsed.mulDiv(interestRate, BASETIME);
+        rewardsPercent = timeElapsed.mulDivDown(interestRate, BASETIME);
 
-        claimableRewards += userVault.balance.mulDiv(rewardsPercent, SCALE) + userVault.uncollectedRewards;
+        claimableRewards += userVault.balance.mulDivDown(rewardsPercent, SCALE) + userVault.uncollectedRewards;
 
         // Update user's vault info
         userVault.lastClaimTime = block.timestamp;
@@ -639,11 +639,11 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     uint256 gSGXToContract
     ) {
 
-        burnAmount = rewards.mulDiv(burnPercent, SCALE);
-        shortLockup = rewards.mulDiv(ILockupHell(lockup).getShortPercentage(), SCALE);
-        longLockup = rewards.mulDiv(ILockupHell(lockup).getLongPercentage(), SCALE);
-        curGSGXPercent = rewards.mulDiv(gSGXPercent, SCALE);
-        gSGXToContract = rewards.mulDiv(gSGXDistributed, SCALE);
+        burnAmount = rewards.mulDivDown(burnPercent, SCALE);
+        shortLockup = rewards.mulDivDown(ILockupHell(lockup).getShortPercentage(), SCALE);
+        longLockup = rewards.mulDivDown(ILockupHell(lockup).getLongPercentage(), SCALE);
+        curGSGXPercent = rewards.mulDivDown(gSGXPercent, SCALE);
+        gSGXToContract = rewards.mulDivDown(gSGXDistributed, SCALE);
     } 
 
 
@@ -676,9 +676,9 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         timeElapsed = block.timestamp - lastClaimTime;
 
-        rewardsPercent = timeElapsed.mulDiv(interestRate, BASETIME);
+        rewardsPercent = timeElapsed.mulDivDown(interestRate, BASETIME);
 
-        pendingRewards += balance.mulDiv(rewardsPercent, SCALE) + usersVault[user].uncollectedRewards;
+        pendingRewards += balance.mulDivDown(rewardsPercent, SCALE) + usersVault[user].uncollectedRewards;
 
         (uint256 burnAmount,
          uint256 shortLockup,
@@ -792,6 +792,6 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     function getGSGXDominance() external view returns (uint256) {
         require(sgx.totalSupply() > 0, "not enough SGX.");
 
-        return sgx.balanceOf(address(gSGX)).mulDiv(SCALE, sgx.totalSupply());
+        return sgx.balanceOf(address(gSGX)).mulDivDown(SCALE, sgx.totalSupply());
     }
 }

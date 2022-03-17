@@ -5,8 +5,8 @@ import {DSTest} from "ds-test/test.sol";
 import {Subgenix} from "../contracts/Subgenix.sol";
 import {ERC20User} from "./utils/users/ERC20User.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
-import {LockUpHell} from "../contracts/lockupHell.sol";
-import {FullMath} from "../contracts/utils/FullMath.sol";
+import {LockupHell} from "../contracts/lockupHell.sol";
+import {FixedPointMathLib} from "@rari-capital/solmate/src/utils/FixedPointMathLib.sol";
 import {Hevm} from "./utils/Hevm.sol";
 import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
 
@@ -14,18 +14,18 @@ import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
 contract VaultFactoryTest is DSTest {
     Hevm hevm = Hevm(HEVM_ADDRESS);
     VaultFactory vault;
-    LockUpHell lockup;
+    LockupHell lockup;
     Subgenix SGX;
     GovernanceSGX GSGX;
     address Treasury = address(0xBEEF);
     address Research = address(0xABCD);
 
-    using FullMath for uint256;
+    using FixedPointMathLib for uint256;
 
     function setUp() public {
         SGX = new Subgenix("Subgenix Currency", "SGX", 18);
         
-        lockup = new LockUpHell(address(SGX));
+        lockup = new LockupHell(address(SGX));
         
         GSGX = new GovernanceSGX(address(SGX));
         
@@ -186,11 +186,11 @@ contract VaultFactoryTest is DSTest {
         hevm.warp(block.timestamp + 365 days); // Should receive 10% rewards.
 
         uint256 reward = 1e17; // 10%
-        uint256 burnAmount = reward.mulDiv(vault.burnPercent(), 1e18); 
-        uint256 lockup7    = reward.mulDiv(lockup.getShortPercentage(), 1e18); 
-        uint256 lockup18   = reward.mulDiv(lockup.getLongPercentage(), 1e18); 
-        uint256 gSGXDistributed = reward.mulDiv(vault.gSGXDistributed(), 1e18);
-        uint256 gSGXPercentage = reward.mulDiv(vault.gSGXPercent(), 1e18);
+        uint256 burnAmount = reward.mulDivDown(vault.burnPercent(), 1e18); 
+        uint256 lockup7    = reward.mulDivDown(lockup.getShortPercentage(), 1e18); 
+        uint256 lockup18   = reward.mulDivDown(lockup.getLongPercentage(), 1e18); 
+        uint256 gSGXDistributed = reward.mulDivDown(vault.gSGXDistributed(), 1e18);
+        uint256 gSGXPercentage = reward.mulDivDown(vault.gSGXPercent(), 1e18);
 
         reward -= burnAmount;
         reward -= lockup7;

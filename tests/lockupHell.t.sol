@@ -4,14 +4,14 @@ pragma solidity >= 0.8.0;
 import {DSTest} from "ds-test/test.sol";
 import {Subgenix} from "../contracts/Subgenix.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
-import {LockUpHell} from "../contracts/lockupHell.sol";
+import {LockupHell} from "../contracts/lockupHell.sol";
 import {Hevm} from "./utils/Hevm.sol";
 import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
 
 contract LockUpHellTest is DSTest {
     Hevm hevm = Hevm(HEVM_ADDRESS);
     VaultFactory vault;
-    LockUpHell lockup;
+    LockupHell lockup;
     Subgenix SGX;
     GovernanceSGX gsgx;
     address Treasury = address(0xBEEF);
@@ -32,7 +32,7 @@ contract LockUpHellTest is DSTest {
     function setUp() public {
         SGX = new Subgenix("Subgenix Currency", "SGX", 18);
         gsgx = new GovernanceSGX(address(SGX));
-        lockup = new LockUpHell(address(SGX));
+        lockup = new LockupHell(address(SGX));
         
         vault = new VaultFactory(
             address(SGX),      // Underlying token.

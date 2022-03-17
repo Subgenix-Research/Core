@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.0 < 0.9.0;
 
-import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 
 /// @title Subgenix Token.
 /// @author Subgenix Research.

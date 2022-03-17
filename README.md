@@ -1,22 +1,26 @@
 # Subgenix
 
-[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
+Core contracts for the Subgneix Network, an open protocol with emphasis on Subnet investments.
 
-Subgenix smart contracts.
+## Contracts
+
+```ml
+GovernanceSGX — "Governance token of the Subgenix Network."
+LockupHell — "LockupHell for user rewards."
+Subgenix — "Oficial ERC20 + EIP-2612 implementation of the Subgenix Network token."
+VaultFactory — "The vaultFactory where users vaults are created & managed."
+```
 
 ## Development:
 
-tests: `make test`   
-compile: `make build`  
-clean: `make clean`   
-
 **Dependencies**:
-- [Foundry](https://github.com/gakonst/foundry#installation) As the development framework.    
-
-**External libraries**:
-- [Solmate](https://github.com/Rari-Capital/solmate): `forge install Rari-Capital/solmate`   
-- [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts): `forge install openzeppelin/openzeppelin-contracts` 
-
+- [Foundry](https://github.com/gakonst/foundry#installation) - As the Development framework.   
+- [Hardhat](https://github.com/NomicFoundation/hardhat) - As the deployment tool.    
+- [Solmate](https://github.com/Rari-Capital/solmate) - Library for gas optimized smart contract development.    
+- [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts) - Library for secure smart contract development.   
+      
+To compile all our contracts with foundry & hardhat use the following command: `make build`  
+To run all our tests use the following command: `make test`   
 
 ## Security:
 
@@ -33,3 +37,6 @@ You are ready to go!
 We used [Slither](https://github.com/crytic/slither) as a static analyzer to
 search for vulnerabilities in the contract. If you want to run it on your local
 machine use the command `slither .`.
+
+
+## Deployment:

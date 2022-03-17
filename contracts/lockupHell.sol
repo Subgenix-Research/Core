@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.0 < 0.9.0;
 
+import {ReentrancyGuard} from "@rari-capital/solmate/src/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ExtendedIERC20} from "./interfaces/ExtendedIERC20.sol";
 
 /// @title Lockup Hell.
 /// @author Subgenix Research.
 /// @notice This contract is used to lock users rewards for a specific amount of time.
 /// @dev This contract is called from the vaultFactory to lock users rewards.
-contract LockUpHell is Ownable, ReentrancyGuard {
+contract LockupHell is Ownable, ReentrancyGuard {
 
     // <--------------------------------------------------------> //
     // <------------------------ EVENTS ------------------------> //
