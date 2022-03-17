@@ -7,7 +7,6 @@ clean:
 	npx hardhat clean
 
 test:
-	forge clean && \
 	forge test
 
 snap:

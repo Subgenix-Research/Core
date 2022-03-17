@@ -2,8 +2,8 @@ require("colors");
 
 async function main() {
 
-    const treasury = "0x59fcd31a5d1356844aD410e138D8a915E8AB20d0";
-    const research = "0x59fcd31a5d1356844aD410e138D8a915E8AB20d0";
+    const treasury = "";
+    const research = "";
 
     const [owner] = await ethers.getSigners();
 
@@ -58,26 +58,26 @@ async function main() {
 
 
     console.log("   set gSGX withdraw Ceil...");
-    await (await gSGX.setWithdrawCeil(ethers.utils.parseEther("100000"))).wait();
+    await (await gSGX.setWithdrawCeil(ethers.utils.parseEther("10000"))).wait(); // 10,000 SGX
 
 
     console.log("   set lockupTime..");
     await (await lockup.setLongLockupTime(1296000)).wait(); // 15 days in seconds
     await (await lockup.setShortLockupTime(604800)).wait(); // 07 days in seconds
 
-    
+
     console.log("   set vaultFactory contract..");
     await (await lockup.setVaultFactory(vault.address)).wait();
 
 
     console.log("   set vault variables..");
-    await (await vault.setInterestRate(ethers.utils.parseUnits("1", 17))).wait();    // 01e17 = 10%
-    await (await vault.setBurnPercent(ethers.utils.parseUnits("2", 16))).wait();     // 02e16 = 02%
-    await (await vault.setgSGXPercent(ethers.utils.parseUnits("13", 16))).wait();    // 13e16 = 13%
-    await (await vault.setgSGXDistributed(ethers.utils.parseUnits("5", 16))).wait(); // 05e16 = 05%
-    await (await vault.setMinVaultDeposit(ethers.utils.parseUnits("1", 18))).wait(); // 01e18
-    await (await vault.setNetworkBoost(ethers.utils.parseUnits("1", 18))).wait();    // 1x
-    await (await vault.setRewardsWaitTime(0)).wait(); // No time so we can test. in seconds
+    await (await vault.setInterestRate(ethers.utils.parseUnits("7", 18))).wait();      // 07e18 = 700%
+    await (await vault.setBurnPercent(ethers.utils.parseUnits("2", 16))).wait();       // 02e16 = 02%
+    await (await vault.setgSGXPercent(ethers.utils.parseUnits("13", 16))).wait();      // 13e16 = 13%
+    await (await vault.setgSGXDistributed(ethers.utils.parseUnits("5", 16))).wait();   // 05e16 = 05%
+    await (await vault.setMinVaultDeposit(ethers.utils.parseUnits("500", 18))).wait(); // 500e18 = 500 SGX
+    await (await vault.setNetworkBoost(ethers.utils.parseUnits("16", 17))).wait();     // 1.6x
+    await (await vault.setRewardsWaitTime(86400)).wait(); // 1 day in seconds
 
     console.log("   set league amounts..");
     await (await vault.setLeagueAmount(0, ethers.utils.parseUnits("2000", 18))).wait();
@@ -90,7 +90,7 @@ async function main() {
     await (await SGX.setManager(owner.address, true)).wait();
   
     console.log("   mint owner tokens...");
-    await (await SGX.mint(owner.address, ethers.utils.parseEther("1000000"))).wait();
+    await (await SGX.mint(owner.address, ethers.utils.parseEther("1000000"))).wait(); // 1,000,000
 
     console.log("All done!".green);
 }

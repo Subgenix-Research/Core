@@ -1,11 +1,10 @@
+const hre = require("hardhat");
+
 async function main() {
 
     const [owner] = await ethers.getSigners();
-    
-    const VaultFactory = await ethers.getContractFactory("VaultFactory");
-    const vault = await VaultFactory.attach("0xFa5699D2dcB2E16E897cC20C2FA35A6870d7E948");
 
-    await vault.liquidateVault(owner.address);
+
 }
 
 main()
@@ -26,7 +25,6 @@ main()
 //
     //const LockupHell = await ethers.getContractFactory("LockUpHell");
     //const lockup = await LockupHell.attach("0xa24Bce2f4dfC1BC4F15F315DD638F33B30CD65b9");
-
 
     // Create vault
     //await (await sgx.approve(vault.address, ethers.utils.parseEther("10"))).wait();

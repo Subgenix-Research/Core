@@ -34,7 +34,7 @@ contract GovernanceSGX is ERC20, Ownable {
     // <--------------------------------------------------------> // 
 
     // Subgenix Network offical token.
-    IERC20 immutable sgx;
+    IERC20 immutable internal sgx;
 
     /// @notice The withdraw ceiling, manually updated by devs.
     uint256 public withdrawCeil;
@@ -72,7 +72,7 @@ contract GovernanceSGX is ERC20, Ownable {
 
         // Lock the SGX in the contract
         bool success = sgx.transferFrom(msg.sender, address(this), amount);
-        require(success, "Failed to transfer SGX to gSGX contract.");
+        require(success, "Failed TransferFrom.");
     }
 
     /// @notice Unlocks the staked + gained SGX and burns gSGX.

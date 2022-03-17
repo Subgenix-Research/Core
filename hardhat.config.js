@@ -1,9 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-etherscan");
+
 require('dotenv').config()
 
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
 
 module.exports = {
     defaultNetwork: "hardhat",
@@ -23,7 +22,9 @@ module.exports = {
             url: "https://api.avax.network/ext/bc/C/rpc",
             gasPrice: 225000000000,
             chainId: 43114,
-            accounts: []
+            accounts: [
+                process.env.privateKey
+            ]
         },
         fuji: {
             url: "https://api.avax-test.network/ext/bc/C/rpc",
@@ -48,5 +49,11 @@ module.exports = {
         tests: "./tests",
         cache: "./cache",
         artifacts: "./artifacts"
+    },
+    etherscan: {
+        apiKey: {
+            avalanche: process.env.snowTraceAPI,
+            avalancheFujiTestnet: process.env.snowTraceFujiAPI
+        }
     }
 };

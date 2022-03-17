@@ -71,8 +71,8 @@ contract LockupHell is Ownable, ReentrancyGuard {
     struct Lockup {
         bool longRewardsCollected;    // True if user collected long rewards, false otherwise.
         bool shortRewardsCollected;   // True if user collected short rewards, false otherwise.
-        uint32 longLockupUnlockDate;  // Time (in Unit time stamp) in the future when long lockup rewards will be unlocked.
-        uint32 shortLockupUnlockDate; // Time (in Unit time stamp) in the future when short lockup rewards will be unlocked.
+        uint32 longLockupUnlockDate;  // Time (in Unit time stamp) when long lockup rewards will be unlocked.
+        uint32 shortLockupUnlockDate; // Time (in Unit time stamp) when short lockup rewards will be unlocked.
         uint256 longRewards;          // The amount of rewards available to the user after longLockupUnlockDate.
         uint256 shortRewards;         // The amount of rewards available to the user after shortLockupUnlockDate.
     }
@@ -95,10 +95,10 @@ contract LockupHell is Ownable, ReentrancyGuard {
     mapping(address => uint32) public usersLockupLength;
 
     // Subgenix offical token, minted as a reward after each lockup.
-    address immutable sgx;
+    address internal immutable sgx;
 
     // vaultFactory contract address.
-    address vaultFactory;
+    address internal vaultFactory;
 
     // only the vaultFactory address can access function with this modifier.
     modifier onlyVaultFactory() {
@@ -107,23 +107,26 @@ contract LockupHell is Ownable, ReentrancyGuard {
     }
 
     // Global rates.
-    Rates rates;
+    Rates public rates;
     
-    constructor(address SGXAddress) {
-        sgx = SGXAddress;
+    constructor(address sgxAddress) {
+        sgx = sgxAddress;
     }
 
     // <--------------------------------------------------------> //
     // <------------------ EXTERNAL FUNCTIONS ------------------> //
     // <--------------------------------------------------------> // 
 
-    /// @notice Every time a user claim's his rewards, a portion of them are locked for a specific time period
-    ///         in this contract.
-    /// @dev    Function called from the `VaultFactory` contract to lock users rewards. We use the 'nonReentrant' modifier
-    ///         from the `ReentrancyGuard` made by openZeppelin as an extra layer of protection against Reentrancy Attacks.
+    /// @notice Every time a user claim's his rewards, a portion of them are locked for a 
+    ///         specific time period in this contract.
+    /// @dev    Function called from the `VaultFactory` contract to lock users rewards. We use 
+    ///         the 'nonReentrant' modifier from the `ReentrancyGuard` made by openZeppelin as 
+    ///         an extra layer of protection against Reentrancy Attacks.
     /// @param user address, The user who's rewards are being locked.
-    /// @param shortLockupRewards uint256, amount of rewards that are going to be locked up for a shorter period of time.
-    /// @param longLockupRewards uint256, amount of rewards that are going to be locked up for a longer period of time.
+    /// @param shortLockupRewards uint256, amount of rewards that are going to be locked up for 
+    ///        a shorter period of time.
+    /// @param longLockupRewards uint256, amount of rewards that are going to be locked up for 
+    ///        a longer period of time.
     function lockupRewards(
         address user,
         uint256 shortLockupRewards, 
@@ -154,10 +157,10 @@ contract LockupHell is Ownable, ReentrancyGuard {
         // contract. They are placed in the end of the function after all the internal
         // work and state changes are done to avoid Reentrancy Attacks.
         bool success = ExtendedIERC20(sgx).transferFrom(user, address(this), shortLockupRewards);
-        require(success, "Failed to transfer SGX to lockupHell.");
+        require(success, "Failed transferFrom.");
         
         success = ExtendedIERC20(sgx).transferFrom(user, address(this), longLockupRewards);
-        require(success, "Failed to transfer SGX to lockupHell.");
+        require(success, "Failed transferFrom.");
 
         emit RewardsLocked(user, shortLockupRewards, longLockupRewards); 
     }
@@ -182,8 +185,8 @@ contract LockupHell is Ownable, ReentrancyGuard {
         // If all three are true, the user can safely colect their short lockup rewards.
         require(usersLockupLength[user] >= index, "Index invalid");
         require(!temp.shortRewardsCollected, "Already claimed.");
-        //require(block.timestamp > temp.shortLockupUnlockDate, "Too early to claim.");
-        require(msg.sender == user, "You can only claim your own rewards.");
+        require(block.timestamp > temp.shortLockupUnlockDate, "Too early to claim.");
+        require(msg.sender == user, "Not user.");
 
         // Make a temporary copy of the user `lockup` and get the short lockup rewards amount.
         uint256 amount = temp.shortRewards;
@@ -229,8 +232,8 @@ contract LockupHell is Ownable, ReentrancyGuard {
         // If all three are true, the user can safely colect their long lockup rewards.
         require(usersLockupLength[user] >= index, "Index invalid");
         require(!temp.longRewardsCollected, "Already claimed.");
-        //require(block.timestamp > temp.longLockupUnlockDate, "Too early to claim.");
-        require(msg.sender == user, "You can only claim your own rewards.");
+        require(block.timestamp > temp.longLockupUnlockDate, "Too early to claim.");
+        require(msg.sender == user, "Not user.");
 
         uint256 amount = temp.longRewards;
         

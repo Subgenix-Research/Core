@@ -42,18 +42,18 @@ contract LockUpHellTest is DSTest {
             address(lockup)    // Lockup contract.
         );
 
-        lockup.setLongPercentage(18e16);    // Percentage to be locked up for 18 days, 18e16 = 18%.
-        lockup.setShortPercentage(12e16);   // Percentage to be locked up for 07 days, 12e16 = 12%.
+        lockup.setLongPercentage(18e16);   // Percentage to be locked up for 18 days, 18e16 = 18%.
+        lockup.setShortPercentage(12e16);  // Percentage to be locked up for 07 days, 12e16 = 12%.
         lockup.setLongLockupTime(18 days); // 18 days in seconds
         lockup.setShortLockupTime(7 days); // 07 days in seconds
         lockup.setVaultFactory(address(vault));
 
-        vault.setInterestRate(1e16);      // Daily rewards, 1e16 = 1%
+        vault.setInterestRate(1e16);        // Daily rewards, 1e16 = 1%
         vault.setBurnPercent(2e16);         // Percentage burned when claiming rewards, 2e16 = 2%.
         vault.setgSGXPercent(13e16);        // Percentage of rewards converted to gSGX 13e16 = 13%.
         vault.setgSGXDistributed(5e16);     // Percentage of rewards sent to the gSGX contract. 5e16 = 5%.
-        vault.setMinVaultDeposit(1e18);    // Minimum amount required to deposite in Vault.
-        vault.setNetworkBoost(1);           // SGX booster.
+        vault.setMinVaultDeposit(1e18);     // Minimum amount required to deposite in Vault.
+        vault.setNetworkBoost(1e18);        // SGX booster.
         vault.setRewardsWaitTime(24 hours); // rewards wait time.
 
         SGX.setManager(address(vault), true);
