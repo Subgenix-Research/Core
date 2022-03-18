@@ -77,6 +77,7 @@ async function main() {
     await (await vault.setgSGXDistributed(ethers.utils.parseUnits("5", 16))).wait();   // 05e16 = 05%
     await (await vault.setMinVaultDeposit(ethers.utils.parseUnits("500", 18))).wait(); // 500e18 = 500 SGX
     await (await vault.setNetworkBoost(ethers.utils.parseUnits("16", 17))).wait();     // 1.6x
+    await (await vault.setLiquidateVaultPercent(ethers.utils.parseUnits("15", 16))).wait(); // 15%
     await (await vault.setRewardsWaitTime(86400)).wait(); // 1 day in seconds
 
     console.log("   set league amounts..");

@@ -50,6 +50,7 @@ contract VaultFactoryTest is DSTest {
         vault.setMinVaultDeposit(1e18);     // Minimum amount required to deposite in Vault.
         vault.setNetworkBoost(1e18);        // SGX booster.
         vault.setRewardsWaitTime(24 hours); // rewards wait time.
+        vault.setLiquidateVaultPercent(15e16); // 15% of the vault back to the user.
 
         SGX.setManager(address(vault), true);
 
@@ -132,7 +133,7 @@ contract VaultFactoryTest is DSTest {
 
     function testLiquidateVault() public {
         ERC20User user = new ERC20User(SGX);
-        uint256 amount = 200e18;
+        uint256 amount = 10e18;
         uint256 balance;
         bool exists;
  
@@ -142,9 +143,13 @@ contract VaultFactoryTest is DSTest {
         hevm.startPrank(address(user), address(user));
         // 2. Approve this address to spend impersonated account tokens.
         user.approve(address(vault), amount);
+        balance = SGX.balanceOf(address(user));
+        emit log_uint(balance);
 
         // 3. Impersonate user. 
         vault.createVault(amount);
+        balance = SGX.balanceOf(address(user));
+        emit log_uint(balance);
         
         (exists, , , , , ) = vault.usersVault(address(user));
 
@@ -152,7 +157,9 @@ contract VaultFactoryTest is DSTest {
 
         vault.liquidateVault(address(user));
 
-        (exists, , , , , ) = vault.usersVault(address(user));
+        (exists, , , balance, , ) = vault.usersVault(address(user));
+        balance = SGX.balanceOf(address(user));
+        emit log_uint(balance);
 
         assertTrue(!exists);
 
@@ -180,38 +187,35 @@ contract VaultFactoryTest is DSTest {
 
         ( , , balance, ) = vault.getVaultInfo(address(user));
 
-        emit log_uint(balance);
-       
         // *---- Jump in time and claim rewards ----* //
 
         // Jump 1 day into the future
         hevm.warp(block.timestamp + 365 days); // Should receive 700% rewards.
 
-        (uint256 pendingRewards, uint256 shortLockup, uint256 longLockup) = vault.viewPendingRewards(address(user));
-        emit log_uint(pendingRewards + shortLockup + longLockup);
+        //(uint256 pendingRewards, uint256 shortLockup, uint256 longLockup) = vault.viewPendingRewards(address(user));
 
-        //uint256 reward = 700e18; // 700%
-        //uint256 burnAmount = reward.mulDivDown(vault.burnPercent(), 1e18); 
-        //uint256 lockup7    = reward.mulDivDown(lockup.getShortPercentage(), 1e18); 
-        //uint256 lockup18   = reward.mulDivDown(lockup.getLongPercentage(), 1e18); 
-        //uint256 gSGXDistributed = reward.mulDivDown(vault.gSGXDistributed(), 1e18);
-        //uint256 gSGXPercentage = reward.mulDivDown(vault.gSGXPercent(), 1e18);
-//
-        //reward -= burnAmount;
-        //reward -= lockup7;
-        //reward -= lockup18;
-        //reward -= gSGXDistributed;
-        //reward -= gSGXPercentage;
-//
-        //uint256 result = (amount - deposit) + reward;
-        //
-        //// Approve
-        //SGX.approve(address(lockup), lockup7+lockup18);
-//
-        //vault.claimRewards(address(user));
-//
-        //assertEq(SGX.balanceOf(address(user)), result);
-        //hevm.stopPrank();
+        uint256 reward = 7e18; // 700%
+        uint256 burnAmount = reward.mulDivDown(vault.burnPercent(), 1e18); 
+        uint256 lockup7    = reward.mulDivDown(lockup.getShortPercentage(), 1e18); 
+        uint256 lockup18   = reward.mulDivDown(lockup.getLongPercentage(), 1e18); 
+        uint256 gSGXDistributed = reward.mulDivDown(vault.gSGXDistributed(), 1e18);
+        uint256 gSGXPercentage = reward.mulDivDown(vault.gSGXPercent(), 1e18);
+        
+        reward -= burnAmount;
+        reward -= lockup7;
+        reward -= lockup18;
+        reward -= gSGXDistributed;
+        reward -= gSGXPercentage;
+        
+        uint256 result = (amount - deposit) + reward;
+        
+        // Approve
+        SGX.approve(address(lockup), lockup7+lockup18);
+        
+        vault.claimRewards(address(user));
+        
+        assertEq(SGX.balanceOf(address(user)), result);
+        hevm.stopPrank();
     }
 
 
