@@ -2,8 +2,8 @@ require("colors");
 
 async function main() {
 
-    const treasury = "0x59fcd31a5d1356844aD410e138D8a915E8AB20d0";
-    const research = "0x59fcd31a5d1356844aD410e138D8a915E8AB20d0";
+    const treasury = "";
+    const research = "";
 
     const [owner] = await ethers.getSigners();
 
