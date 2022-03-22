@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity >= 0.8.4 < 0.9.0;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
+
+error TransferFrom();
+error ErrorTransfer();
+error WithdrawCeilingAchieved();
+
 
 /// @title Governance SGX.
 /// @author Subgenix Research.
@@ -72,7 +77,7 @@ contract GovernanceSGX is ERC20, Ownable {
 
         // Lock the SGX in the contract
         bool success = sgx.transferFrom(msg.sender, address(this), amount);
-        require(success, "Failed TransferFrom.");
+        if (!success) { revert TransferFrom(); }
     }
 
     /// @notice Unlocks the staked + gained SGX and burns gSGX.
@@ -89,7 +94,7 @@ contract GovernanceSGX is ERC20, Ownable {
         uint256 amount = (share * totalSGX) / totalShares;
 
         // Check with withdraw ceiling wasn't hit yet.
-        require(withdrawCeil >= amount, "Amount hitting withdraw ceil.");
+        if (withdrawCeil < amount) { revert WithdrawCeilingAchieved(); }
 
         withdrawCeil -= amount;
         
@@ -100,7 +105,7 @@ contract GovernanceSGX is ERC20, Ownable {
 
         // Transfer user's SGX.
         bool success = sgx.transfer(msg.sender, amount);
-        require(success, "Failed transfering SGX to user.");
+        if (!success) { revert ErrorTransfer(); }
     }
 
     /// @notice Updates the withdraw ceil value.

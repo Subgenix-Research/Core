@@ -6,7 +6,6 @@ import {Subgenix} from "../contracts/Subgenix.sol";
 import {ERC20User} from "./utils/users/ERC20User.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
 import {LockupHell} from "../contracts/lockupHell.sol";
-import {FixedPointMathLib} from "@rari-capital/solmate/src/utils/FixedPointMathLib.sol";
 import {Hevm} from "./utils/Hevm.sol";
 import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
 
@@ -20,7 +19,26 @@ contract VaultFactoryTest is DSTest {
     address Treasury = address(0xBEEF);
     address Research = address(0xABCD);
 
-    using FixedPointMathLib for uint256;
+    /// @dev    from Solmate (https://github.com/Rari-Capital/solmate/blob/main/src/utils/FixedPointMathLib.sol)
+    function mulDivDown(
+        uint256 x,
+        uint256 y,
+        uint256 denominator
+    ) internal pure returns (uint256 z) {
+        // solhint-disable-next-line
+        assembly {
+            // Store x * y in z for now.
+            z := mul(x, y)
+
+            // Equivalent to require(denominator != 0 && (x == 0 || (x * y) / x == y))
+            if iszero(and(iszero(iszero(denominator)), or(iszero(x), eq(div(z, x), y)))) {
+                revert(0, 0)
+            }
+
+            // Divide z by the denominator.
+            z := div(z, denominator)
+        }
+    }
 
     function setUp() public {
         SGX = new Subgenix("Subgenix Currency", "SGX", 18);
@@ -144,12 +162,10 @@ contract VaultFactoryTest is DSTest {
         // 2. Approve this address to spend impersonated account tokens.
         user.approve(address(vault), amount);
         balance = SGX.balanceOf(address(user));
-        emit log_uint(balance);
 
         // 3. Impersonate user. 
         vault.createVault(amount);
         balance = SGX.balanceOf(address(user));
-        emit log_uint(balance);
         
         (exists, , , , , ) = vault.usersVault(address(user));
 
@@ -159,7 +175,6 @@ contract VaultFactoryTest is DSTest {
 
         (exists, , , balance, , ) = vault.usersVault(address(user));
         balance = SGX.balanceOf(address(user));
-        emit log_uint(balance);
 
         assertTrue(!exists);
 
@@ -173,8 +188,6 @@ contract VaultFactoryTest is DSTest {
         uint256 amount = 10e18;
         uint256 deposit = 1e18;
         uint256 balance;
-        uint256 vesting;
-        uint256 lastClaimTime;
 
         // 1. Mint token to account.
         SGX.mint(address(user), amount);
@@ -192,15 +205,13 @@ contract VaultFactoryTest is DSTest {
         // Jump 1 day into the future
         hevm.warp(block.timestamp + 365 days); // Should receive 700% rewards.
 
-        //(uint256 pendingRewards, uint256 shortLockup, uint256 longLockup) = vault.viewPendingRewards(address(user));
-
         uint256 reward = 7e18; // 700%
-        uint256 burnAmount = reward.mulDivDown(vault.burnPercent(), 1e18); 
-        uint256 lockup7    = reward.mulDivDown(lockup.getShortPercentage(), 1e18); 
-        uint256 lockup18   = reward.mulDivDown(lockup.getLongPercentage(), 1e18); 
-        uint256 gSGXDistributed = reward.mulDivDown(vault.gSGXDistributed(), 1e18);
-        uint256 gSGXPercentage = reward.mulDivDown(vault.gSGXPercent(), 1e18);
-        
+        uint256 burnAmount = mulDivDown(reward, vault.burnPercent(), 1e18); 
+        uint256 lockup7    = mulDivDown(reward, lockup.getShortPercentage(), 1e18); 
+        uint256 lockup18   = mulDivDown(reward, lockup.getLongPercentage(), 1e18); 
+        uint256 gSGXDistributed = mulDivDown(reward, vault.gSGXDistributed(), 1e18);
+        uint256 gSGXPercentage = mulDivDown(reward, vault.gSGXPercent(), 1e18);
+
         reward -= burnAmount;
         reward -= lockup7;
         reward -= lockup18;
@@ -225,7 +236,6 @@ contract VaultFactoryTest is DSTest {
         uint256 amount = 10e18;
         uint256 deposit = 1e18;
         uint256 balance;
-        uint256 balance2;
 
         // 1. Mint token to account.
         SGX.mint(address(user), amount);
@@ -256,11 +266,9 @@ contract VaultFactoryTest is DSTest {
         uint256 amount = 10e18;
         uint256 deposit = 1e18;
         uint256 balance;
-        uint256 balance2;
 
         // 1. Mint token to account.
         SGX.mint(msg.sender, amount);
-        uint256 balanceBefore = SGX.balanceOf(msg.sender);
 
         hevm.startPrank(msg.sender);
         // 2. Approve this address to spend impersonated account tokens.

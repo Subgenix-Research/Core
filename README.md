@@ -42,11 +42,11 @@ To run the Slither you will need to first create a python environment:
 You are ready to go!
 
 [Slither](https://github.com/crytic/slither) was used as a static analyzer to
-search for vulnerabilities in the contract. You can it on your clone repo using 
+search for vulnerabilities in the contract. You can use it on your clone repo using 
 the command `slither .`.
 
 [Solhint](https://github.com/protofire/solhint) was used as a tool for Security 
-and Style Guide validations. You can it on your clone repo using the command 
+and Style Guide validations. You can use it on your clone repo using the command 
 `solhint 'contracts/*.sol'`.
 
 

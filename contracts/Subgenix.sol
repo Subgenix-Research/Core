@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity >= 0.8.4 < 0.9.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
+
+error Unauthorized();
 
 /// @title Subgenix Token.
 /// @author Subgenix Research.
@@ -19,7 +21,7 @@ contract Subgenix is ERC20, Ownable {
     mapping(address => bool) public managers;
 
     modifier onlyManagers() {
-        require(managers[msg.sender], "Not manager.");
+        if (!managers[msg.sender]) { revert Unauthorized(); }
         _;
     }
     

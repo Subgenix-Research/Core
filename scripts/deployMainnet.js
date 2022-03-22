@@ -89,9 +89,9 @@ async function main() {
     console.log("   set token manager..");
     await (await SGX.setManager(vault.address, true)).wait();
     await (await SGX.setManager(owner.address, true)).wait();
-  
+
     console.log("   mint owner tokens...");
-    await (await SGX.mint(owner.address, ethers.utils.parseEther("1000000"))).wait(); // 1,000,000
+    await (await SGX.mint(owner.address, ethers.utils.parseEther("6000000"))).wait(); // 6,000,000
 
     console.log("All done!".green);
 }

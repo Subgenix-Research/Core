@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity >= 0.8.4 < 0.9.0;
 
 /**
  * @dev Interface of the ERC20 standard with mint and burn functions.
  */
-interface ExtendedIERC20 {
+interface IERC20Mintable {
     /**
      * @dev Returns the amount of tokens in existence.
      */

@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0 < 0.9.0;
+pragma solidity >= 0.8.4 < 0.9.0;
 
 import {ReentrancyGuard} from "@rari-capital/solmate/src/utils/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ExtendedIERC20} from "./interfaces/ExtendedIERC20.sol";
+
+error Unauthorized();
+error IndexInvalid();
+error AlreadyClaimed();
+error TooEarlyToClaim();
+error TransferFrom();
+error Transfer();
 
 /// @title Lockup Hell.
 /// @author Subgenix Research.
@@ -102,7 +109,7 @@ contract LockupHell is Ownable, ReentrancyGuard {
 
     // only the vaultFactory address can access function with this modifier.
     modifier onlyVaultFactory() {
-        require(msg.sender == vaultFactory, "Not vault Factory.");
+        if (msg.sender != vaultFactory) { revert Unauthorized(); }
         _;
     }
 
@@ -156,11 +163,11 @@ contract LockupHell is Ownable, ReentrancyGuard {
         // Transfer the rewards that are going to be locked up from the user to this
         // contract. They are placed in the end of the function after all the internal
         // work and state changes are done to avoid Reentrancy Attacks.
-        bool success = ExtendedIERC20(sgx).transferFrom(user, address(this), shortLockupRewards);
-        require(success, "Failed transferFrom.");
+        bool success = IERC20(sgx).transferFrom(user, address(this), shortLockupRewards);
+        if (!success) { revert TransferFrom(); }
         
-        success = ExtendedIERC20(sgx).transferFrom(user, address(this), longLockupRewards);
-        require(success, "Failed transferFrom.");
+        success = IERC20(sgx).transferFrom(user, address(this), longLockupRewards);
+        if (!success) { revert TransferFrom(); }
 
         emit RewardsLocked(user, shortLockupRewards, longLockupRewards); 
     }
@@ -183,10 +190,10 @@ contract LockupHell is Ownable, ReentrancyGuard {
         //    when the rewards were first locked.
         //
         // If all three are true, the user can safely colect their short lockup rewards.
-        require(usersLockupLength[user] >= index, "Index invalid");
-        require(!temp.shortRewardsCollected, "Already claimed.");
-        require(block.timestamp > temp.shortLockupUnlockDate, "Too early to claim.");
-        require(msg.sender == user, "Not user.");
+        if (msg.sender != user) { revert Unauthorized(); }
+        if (usersLockupLength[user] < index) { revert IndexInvalid(); }
+        if(temp.shortRewardsCollected) { revert AlreadyClaimed(); }
+        if (block.timestamp <= temp.shortLockupUnlockDate) { revert TooEarlyToClaim(); }
 
         // Make a temporary copy of the user `lockup` and get the short lockup rewards amount.
         uint256 amount = temp.shortRewards;
@@ -204,8 +211,8 @@ contract LockupHell is Ownable, ReentrancyGuard {
         usersTotalLocked[user] -= amount;
 
         // Transfer the short rewards amount to user.
-        bool success = ExtendedIERC20(sgx).transfer(user, amount);
-        require(success, "Failed to trasfer SGX to user.");
+        bool success = IERC20(sgx).transfer(user, amount);
+        if (!success) { revert Transfer(); }
         
         emit UnlockShortLockup(user, amount);
     }
@@ -230,10 +237,10 @@ contract LockupHell is Ownable, ReentrancyGuard {
         //    when the rewards were first locked.
         //
         // If all three are true, the user can safely colect their long lockup rewards.
-        require(usersLockupLength[user] >= index, "Index invalid");
-        require(!temp.longRewardsCollected, "Already claimed.");
-        require(block.timestamp > temp.longLockupUnlockDate, "Too early to claim.");
-        require(msg.sender == user, "Not user.");
+        if (msg.sender != user) { revert Unauthorized(); }
+        if (usersLockupLength[user] < index) { revert IndexInvalid(); }
+        if(temp.shortRewardsCollected) { revert AlreadyClaimed(); }
+        if (block.timestamp <= temp.shortLockupUnlockDate) { revert TooEarlyToClaim(); }
 
         uint256 amount = temp.longRewards;
         
@@ -250,8 +257,8 @@ contract LockupHell is Ownable, ReentrancyGuard {
         usersTotalLocked[user] -= amount;
 
         // Transfer the long rewards amount to user.
-        bool success = ExtendedIERC20(sgx).transfer(user, amount);
-        require(success, "Error transfering SGX to user.");
+        bool success = IERC20(sgx).transfer(user, amount);
+        if (!success) { revert Transfer(); }
 
         emit UnlockLongLockup(user, amount);
     }
@@ -326,11 +333,8 @@ contract LockupHell is Ownable, ReentrancyGuard {
 
     /// @notice Updates the vaultFactory contract address.
     /// @param  vaultAddress address, vaultFactory contract address.
-    function setVaultFactory(address vaultAddress) external onlyOwner {
-        require(vaultAddress != address(0), "Can not be zero address");
-        
+    function setVaultFactory(address vaultAddress) external onlyOwner {        
         vaultFactory = vaultAddress;
-
         emit VaultFactoryUpdated(vaultAddress);
     }
 }
