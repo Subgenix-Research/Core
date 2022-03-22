@@ -35,7 +35,9 @@ contract SubgenixTest is DSTestPlus {
 
     function testBurn() public {
         token.mint(address(0xBEEF), 1e18);
-        token.burn(address(0xBEEF), 0.9e18);
+        
+        hevm.prank(address(0xBEEF));
+        token.burn(0.9e18);
 
         assertEq(token.totalSupply(), 1e18 - 0.9e18);
         assertEq(token.balanceOf(address(0xBEEF)), 0.1e18);
@@ -148,7 +150,9 @@ contract SubgenixTest is DSTestPlus {
         burnAmount = bound(burnAmount, 0, mintAmount);
 
         token.mint(from, mintAmount);
-        token.burn(from, burnAmount);
+
+        hevm.prank(from);
+        token.burn(burnAmount);
 
         assertEq(token.totalSupply(), mintAmount - burnAmount);
         assertEq(token.balanceOf(from), mintAmount - burnAmount);
@@ -351,7 +355,9 @@ contract SubgenixTest is DSTestPlus {
         burnAmount = bound(burnAmount, mintAmount + 1, type(uint256).max);
 
         token.mint(to, mintAmount);
-        token.burn(to, burnAmount);
+
+        hevm.prank(to);
+        token.burn(burnAmount);
     }
 
     function testFailTransferInsufficientBalance(

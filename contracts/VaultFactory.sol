@@ -625,7 +625,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         sgx.mint(address(this), mintAmount);
 
-        sgx.burn(address(this), burnAmount); // Burn token
+        sgx.burn(burnAmount); // Burn token
 
         // Convert to gSGX and send to user.
         bool success = sgx.approve(address(gSGX), curGSGXPercent);
@@ -730,7 +730,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         emit DebtReaid(amount);
 
         // Treasury needs to give permission to this contract.
-        sgx.burn(address(msg.sender), amount);
+        sgx.burn(amount);
     }
 
     /// @notice mulDiv rounding down - (x*y)/denominator.

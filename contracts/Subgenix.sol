@@ -49,8 +49,8 @@ contract Subgenix is ERC20, Ownable {
     
     /// @notice Implementation of the burn function from the ERC20.
     /// @dev See {ERC20 _burn}.
-    function burn(address from, uint256 value) external {
-        _burn(from, value); 
+    function burn(uint256 value) external {
+        _burn(msg.sender, value); 
     }
 
     // <--------------------------------------------------------> //

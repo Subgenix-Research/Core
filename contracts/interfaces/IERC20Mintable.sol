@@ -86,7 +86,7 @@ interface IERC20Mintable {
      * - `account` cannot be the zero address.
      * - `account` must have at least `amount` tokens.
      */
-    function burn(address from, uint256 amount) external;
+    function burn(uint256 amount) external;
 
 
     /**
