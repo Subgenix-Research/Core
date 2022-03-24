@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >= 0.8.0;
+pragma solidity >= 0.8.4 < 0.9.0;
 
-import {DSTest} from "ds-test/test.sol";
+import {DSTestPlus} from "./utils/DSTestPlus.sol";
+
 import {Subgenix} from "../contracts/Subgenix.sol";
 import {ERC20User} from "./utils/users/ERC20User.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
 import {LockupHell} from "../contracts/lockupHell.sol";
-import {Hevm} from "./utils/Hevm.sol";
-import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
+import {GovernanceSGX} from "../contracts/Governancesgx.sol";
 
 
-contract VaultFactoryTest is DSTest {
-    Hevm hevm = Hevm(HEVM_ADDRESS);
-    VaultFactory vault;
-    LockupHell lockup;
-    Subgenix SGX;
-    GovernanceSGX GSGX;
-    address Treasury = address(0xBEEF);
-    address Research = address(0xABCD);
+contract VaultFactoryTest is DSTestPlus {
+    VaultFactory internal vault;
+    LockupHell internal lockup;
+    Subgenix internal sgx;
+    GovernanceSGX internal gSGX;
+    address internal treasury = address(0xBEEF);
+    address internal research = address(0xABCD);
 
     /// @dev    from Solmate (https://github.com/Rari-Capital/solmate/blob/main/src/utils/FixedPointMathLib.sol)
     function mulDivDown(
@@ -41,17 +40,17 @@ contract VaultFactoryTest is DSTest {
     }
 
     function setUp() public {
-        SGX = new Subgenix("Subgenix Currency", "SGX", 18);
+        sgx = new Subgenix("Subgenix Currency", "SGX", 18);
         
-        lockup = new LockupHell(address(SGX));
+        lockup = new LockupHell(address(sgx));
         
-        GSGX = new GovernanceSGX(address(SGX));
+        gSGX = new GovernanceSGX(address(sgx));
         
         vault = new VaultFactory(
-            address(SGX),      // Underlying token.
-            address(GSGX),     // Governance token
-            Treasury,          // Treasury address.
-            Research,          // Research address.
+            address(sgx),      // Underlying token.
+            address(gSGX),     // Governance token
+            treasury,          // treasury address.
+            research,          // research address.
             address(lockup)    // Lockup contract.
         );
 
@@ -70,7 +69,10 @@ contract VaultFactoryTest is DSTest {
         vault.setRewardsWaitTime(24 hours); // rewards wait time.
         vault.setLiquidateVaultPercent(15e16); // 15% of the vault back to the user.
 
-        SGX.setManager(address(vault), true);
+        sgx.setManager(address(vault), true);
+        sgx.setManager(address(gSGX), true);
+        sgx.setManager(address(lockup), true);
+        sgx.pauseContract(true);
 
         hevm.stopPrank();
     }
@@ -80,21 +82,20 @@ contract VaultFactoryTest is DSTest {
     //////////////////////////////////////////////////////////////*/
     
     function testMetaData() public { 
-        assertEq(vault.treasury(), Treasury); 
-        assertEq(vault.minVaultDeposit(), 1e18); 
-        //assertEq(vault.interestRate(), 700e18);
+        assertEq(vault.treasury(), treasury); 
+        assertEq(vault.minVaultDeposit(), 1e18);
     }
 
     function testCreateVault() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
         uint256 amount = 200e18;
         uint256 balance;
         
         assertEq(vault.totalNetworkVaults(), 0);
  
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
-        uint256 balanceBefore = SGX.balanceOf(address(user));
+        sgx.mint(address(user), amount);
+        uint256 balanceBefore = sgx.balanceOf(address(user));
         assertEq(balanceBefore, amount);
 
         // 2. Approve this address to spend impersonated account tokens.
@@ -107,16 +108,16 @@ contract VaultFactoryTest is DSTest {
         ( , , balance, ) = vault.getVaultInfo(address(user));
 
         assertEq(vault.totalNetworkVaults(), 1);
-        assertEq(SGX.balanceOf(Treasury), amount);
+        assertEq(sgx.balanceOf(treasury), amount);
         assertEq(balance, amount);
-        assertEq(SGX.balanceOf(address(user)), balanceBefore - amount);
+        assertEq(sgx.balanceOf(address(user)), balanceBefore - amount);
 
         hevm.stopPrank();
     }
 
 
     function testDepositInVault() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
 
         uint256 amount = 10e18;
         uint256 deposit = 1e18;
@@ -124,12 +125,12 @@ contract VaultFactoryTest is DSTest {
         uint256 balance2;
 
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
-        uint256 balanceBefore = SGX.balanceOf(address(user));
+        sgx.mint(address(user), amount);
+        uint256 balanceBefore = sgx.balanceOf(address(user));
 
         hevm.startPrank(address(user));
         // 2. Approve this address to spend impersonated account tokens.
-        SGX.approve(address(vault), deposit+deposit);
+        sgx.approve(address(vault), deposit+deposit);
 
         vault.createVault(deposit);
         
@@ -144,28 +145,28 @@ contract VaultFactoryTest is DSTest {
         uint256 currentBalance2 = (currentBalance - deposit);
 
         assertEq(balance2, balance+deposit);
-        assertEq(SGX.balanceOf(address(user)), currentBalance2);
+        assertEq(sgx.balanceOf(address(user)), currentBalance2);
         
         hevm.stopPrank();
     }
 
     function testLiquidateVault() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
         uint256 amount = 10e18;
         uint256 balance;
         bool exists;
  
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         hevm.startPrank(address(user), address(user));
         // 2. Approve this address to spend impersonated account tokens.
         user.approve(address(vault), amount);
-        balance = SGX.balanceOf(address(user));
+        balance = sgx.balanceOf(address(user));
 
         // 3. Impersonate user. 
         vault.createVault(amount);
-        balance = SGX.balanceOf(address(user));
+        balance = sgx.balanceOf(address(user));
         
         (exists, , , , , ) = vault.usersVault(address(user));
 
@@ -174,7 +175,7 @@ contract VaultFactoryTest is DSTest {
         vault.liquidateVault(address(user));
 
         (exists, , , balance, , ) = vault.usersVault(address(user));
-        balance = SGX.balanceOf(address(user));
+        balance = sgx.balanceOf(address(user));
 
         assertTrue(!exists);
 
@@ -182,7 +183,7 @@ contract VaultFactoryTest is DSTest {
     }
 
     function testClaimRewards() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
 
         // *---- Create and deposit in vault ----* //
         uint256 amount = 10e18;
@@ -190,11 +191,11 @@ contract VaultFactoryTest is DSTest {
         uint256 balance;
 
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         // 2. Approve this address to spend impersonated account tokens.
         hevm.startPrank(address(user), address(user));
-        SGX.approve(address(vault), amount);
+        sgx.approve(address(vault), amount);
          
         vault.createVault(deposit);
 
@@ -221,29 +222,28 @@ contract VaultFactoryTest is DSTest {
         uint256 result = (amount - deposit) + reward;
         
         // Approve
-        SGX.approve(address(lockup), lockup7+lockup18);
+        sgx.approve(address(lockup), lockup7+lockup18);
         
         vault.claimRewards(address(user));
         
-        assertEq(SGX.balanceOf(address(user)), result);
+        assertEq(sgx.balanceOf(address(user)), result);
         hevm.stopPrank();
     }
 
 
     function testDepositInVaultWithInterestChange() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
 
         uint256 amount = 10e18;
         uint256 deposit = 1e18;
         uint256 balance;
 
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
-        uint256 balanceBefore = SGX.balanceOf(address(user));
+        sgx.mint(address(user), amount);
 
         hevm.startPrank(address(user));
         // 2. Approve this address to spend impersonated account tokens.
-        SGX.approve(address(vault), deposit+deposit);
+        sgx.approve(address(vault), deposit+deposit);
          
         // 3. Impersonate user
         vault.createVault(deposit);
@@ -268,11 +268,11 @@ contract VaultFactoryTest is DSTest {
         uint256 balance;
 
         // 1. Mint token to account.
-        SGX.mint(msg.sender, amount);
+        sgx.mint(msg.sender, amount);
 
         hevm.startPrank(msg.sender);
         // 2. Approve this address to spend impersonated account tokens.
-        SGX.approve(address(vault), type(uint256).max);
+        sgx.approve(address(vault), type(uint256).max);
          
         // 3. Impersonate user
         vault.createVault(deposit);
@@ -288,7 +288,7 @@ contract VaultFactoryTest is DSTest {
         hevm.warp(block.timestamp + 1 days);
 
         hevm.startPrank(msg.sender);
-        SGX.approve(address(lockup), type(uint256).max);
+        sgx.approve(address(lockup), type(uint256).max);
         
         vault.claimRewards(msg.sender);
 
@@ -300,11 +300,11 @@ contract VaultFactoryTest is DSTest {
     //////////////////////////////////////////////////////////////*/
 
     function testFailCreateVaultAlreadyHasOne() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
         uint256 amount = 200e18;
  
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         // 2. Approve vault to spend impersonated account tokens.
         user.approve(address(vault), amount);
@@ -319,11 +319,11 @@ contract VaultFactoryTest is DSTest {
         hevm.stopPrank();
     }
     function testFailCreateVaultAmountTooSmall() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
         uint256 amount = 1e16;
  
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         // 2. Approve vault to spend impersonated account tokens.
         hevm.startPrank(address(user));
@@ -335,7 +335,7 @@ contract VaultFactoryTest is DSTest {
         hevm.stopPrank();
     }
     function testFailCreateVaultNotEnoughFunds() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
         uint256 amount = 2e18;
  
          hevm.startPrank(address(user));
@@ -349,17 +349,17 @@ contract VaultFactoryTest is DSTest {
     }
 
     function testFailDepositInVaultDoesntHaveVault() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
 
         uint256 amount = 10e18;
         uint256 deposit = 1e18;
 
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         hevm.startPrank(address(user));
         // 2. Approve this address to spend impersonated account tokens.
-        SGX.approve(address(vault), deposit+deposit);
+        sgx.approve(address(vault), deposit+deposit);
 
         vault.depositInVault(deposit); 
 
@@ -367,16 +367,16 @@ contract VaultFactoryTest is DSTest {
     }
 
     function testFailDepositInVaultNotEnoughFunds() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
 
         uint256 deposit = 1e18;
 
         // 1. Mint token to account.
-        SGX.mint(address(user), deposit);
+        sgx.mint(address(user), deposit);
 
         hevm.startPrank(address(user));
         // 2. Approve this address to spend impersonated account tokens.
-        SGX.approve(address(vault), deposit+deposit);
+        sgx.approve(address(vault), deposit+deposit);
 
         vault.createVault(deposit);
 
@@ -386,12 +386,12 @@ contract VaultFactoryTest is DSTest {
     }
 
     function testFailLiquidateVaultNotUser() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
         
         uint256 amount = 20e18;
  
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         hevm.startPrank(address(user), address(user));
         // 2. Approve this address to spend impersonated account tokens.
@@ -405,12 +405,12 @@ contract VaultFactoryTest is DSTest {
     }
 
     function testFailLiquidateVaultDoesntHaveVault() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
         
         uint256 amount = 20e18;
  
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         hevm.startPrank(address(user), address(user));
         // 2. Approve this address to spend impersonated account tokens.
@@ -422,18 +422,18 @@ contract VaultFactoryTest is DSTest {
     }
 
     function testFailClaimRewardsNotUser() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
 
         // *---- Create and deposit in vault ----* //
         uint256 amount = 10e18;
         uint256 deposit = 1e18;
 
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         // 2. Approve this address to spend impersonated account tokens.
         hevm.startPrank(address(user), address(user));
-        SGX.approve(address(vault), amount);
+        sgx.approve(address(vault), amount);
          
         vault.createVault(deposit);
 
@@ -441,25 +441,25 @@ contract VaultFactoryTest is DSTest {
         hevm.warp(block.timestamp + 365 days); // Should receive 10% rewards.
 
         // Approve
-        SGX.approve(address(lockup), amount);
+        sgx.approve(address(lockup), amount);
 
         hevm.stopPrank();
         vault.claimRewards(address(user));
     }
 
     function testFailClaimRewardsDoesntHaveVault() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
 
         // *---- Create and deposit in vault ----* //
         uint256 amount = 10e18;
 
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         // 2. Approve this address to spend impersonated account tokens.
         hevm.startPrank(address(user), address(user));
-        SGX.approve(address(vault), amount);
-        SGX.approve(address(lockup), amount);
+        sgx.approve(address(vault), amount);
+        sgx.approve(address(lockup), amount);
 
         vault.claimRewards(address(user));
 
@@ -467,23 +467,23 @@ contract VaultFactoryTest is DSTest {
     }
 
     function testFailClaimRewardsToEarlyToClaim() public {
-        ERC20User user = new ERC20User(SGX);
+        ERC20User user = new ERC20User(sgx);
 
         // *---- Create and deposit in vault ----* //
         uint256 amount = 10e18;
         uint256 deposit = 1e18;
 
         // 1. Mint token to account.
-        SGX.mint(address(user), amount);
+        sgx.mint(address(user), amount);
 
         // 2. Approve this address to spend impersonated account tokens.
         hevm.startPrank(address(user), address(user));
-        SGX.approve(address(vault), amount);
+        sgx.approve(address(vault), amount);
          
         vault.createVault(deposit);
 
         // Approve
-        SGX.approve(address(lockup), amount);
+        sgx.approve(address(lockup), amount);
 
         vault.claimRewards(address(user));
         hevm.stopPrank();

@@ -2,8 +2,8 @@
 pragma solidity >= 0.8.4 < 0.9.0;
 
 import {ReentrancyGuard} from "@rari-capital/solmate/src/utils/ReentrancyGuard.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Isgx} from "./interfaces/Isgx.sol";
 
 error Unauthorized();
 error IndexInvalid();
@@ -163,10 +163,10 @@ contract LockupHell is Ownable, ReentrancyGuard {
         // Transfer the rewards that are going to be locked up from the user to this
         // contract. They are placed in the end of the function after all the internal
         // work and state changes are done to avoid Reentrancy Attacks.
-        bool success = IERC20(sgx).transferFrom(user, address(this), shortLockupRewards);
+        bool success = Isgx(sgx).transferFrom(address(vaultFactory), address(this), shortLockupRewards);
         if (!success) { revert TransferFrom(); }
         
-        success = IERC20(sgx).transferFrom(user, address(this), longLockupRewards);
+        success = Isgx(sgx).transferFrom(address(vaultFactory), address(this), longLockupRewards);
         if (!success) { revert TransferFrom(); }
 
         emit RewardsLocked(user, shortLockupRewards, longLockupRewards); 
@@ -211,7 +211,7 @@ contract LockupHell is Ownable, ReentrancyGuard {
         usersTotalLocked[user] -= amount;
 
         // Transfer the short rewards amount to user.
-        bool success = IERC20(sgx).transfer(user, amount);
+        bool success = Isgx(sgx).transfer(user, amount);
         if (!success) { revert Transfer(); }
         
         emit UnlockShortLockup(user, amount);
@@ -257,7 +257,7 @@ contract LockupHell is Ownable, ReentrancyGuard {
         usersTotalLocked[user] -= amount;
 
         // Transfer the long rewards amount to user.
-        bool success = IERC20(sgx).transfer(user, amount);
+        bool success = Isgx(sgx).transfer(user, amount);
         if (!success) { revert Transfer(); }
 
         emit UnlockLongLockup(user, amount);

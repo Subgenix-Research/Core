@@ -1,9 +1,9 @@
 [default]
 optimizer = true
+optimizer_runs = 200
 src = 'contracts'
 out = 'out'
 test = 'tests'
 libs = ['lib']
-#remappings = ['ds-test/=lib/ds-test/src/']
 
 # See more config options https://github.com/gakonst/foundry/tree/master/config

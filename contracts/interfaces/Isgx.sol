@@ -4,7 +4,7 @@ pragma solidity >= 0.8.4 < 0.9.0;
 /**
  * @dev Interface of the ERC20 standard with mint and burn functions.
  */
-interface IERC20Mintable {
+interface Isgx {
     /**
      * @dev Returns the amount of tokens in existence.
      */
@@ -66,27 +66,30 @@ interface IERC20Mintable {
 
     /** @dev Creates `amount` tokens and assigns them to `account`, increasing
      * the total supply.
-     *
-     * Emits a {Transfer} event with `from` set to the zero address.
-     *
-     * Requirements:
-     *
-     * - `account` cannot be the zero address.
      */
     function mint(address to, uint256 amount) external;
-    
+
     /**
-     * @dev Destroys `amount` tokens from `account`, reducing the
+     * @dev Burns `amount` tokens from `msg.sender`, reducing the
      * total supply.
      *
-     * Emits a {Transfer} event with `to` set to the zero address.
      *
      * Requirements:
      *
-     * - `account` cannot be the zero address.
-     * - `account` must have at least `amount` tokens.
+     * - `msg.sender` must have at least `amount` tokens.
      */
     function burn(uint256 amount) external;
+
+    /**
+     * @dev Burns `amount` tokens from `from`, reducing the
+     * total supply.
+     *
+     * Requirements:
+     *
+     * - `from` must have at least `amount` tokens.
+     * - `msg.sender` must have allowance over `from` tokens `amount`.
+     */
+    function burnFrom(address from, uint256 amount) external;
 
 
     /**

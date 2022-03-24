@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >= 0.8.0;
+pragma solidity >= 0.8.4 < 0.9.0;
 
-import {DSTest} from "ds-test/test.sol";
+import {DSTestPlus} from "./utils/DSTestPlus.sol";
+
 import {Subgenix} from "../contracts/Subgenix.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
 import {LockupHell} from "../contracts/lockupHell.sol";
-import {Hevm} from "./utils/Hevm.sol";
-import {GovernanceSGX} from "../contracts/GovernanceSGX.sol";
+import {GovernanceSGX} from "../contracts/Governancesgx.sol";
+import {ERC20User} from "./utils/users/ERC20User.sol";
 
-contract LockUpHellTest is DSTest {
-    Hevm hevm = Hevm(HEVM_ADDRESS);
-    VaultFactory vault;
-    LockupHell lockup;
-    Subgenix SGX;
-    GovernanceSGX gsgx;
-    address Treasury = address(0xBEEF);
-    address Research = address(0xABCD);
+contract LockUpHellTest is DSTestPlus {
+    VaultFactory internal vault;
+    LockupHell internal lockup;
+    Subgenix internal sgx;
+    GovernanceSGX internal gsgx;
+    address internal treasury = address(0xBEEF);
+    address internal research = address(0xABCD);
 
-    uint256 shortRewards = 1e18;
-    uint256 longRewards = 5e18;
+    uint256 internal shortRewards = 1e18;
+    uint256 internal longRewards = 5e18;
 
     struct LockupType {
         bool longRewardsColected;  // True if user colected long rewards, false otherwise.
@@ -30,15 +30,15 @@ contract LockUpHellTest is DSTest {
     }
     
     function setUp() public {
-        SGX = new Subgenix("Subgenix Currency", "SGX", 18);
-        gsgx = new GovernanceSGX(address(SGX));
-        lockup = new LockupHell(address(SGX));
+        sgx = new Subgenix("Subgenix Currency", "SGX", 18);
+        gsgx = new GovernanceSGX(address(sgx));
+        lockup = new LockupHell(address(sgx));
         
         vault = new VaultFactory(
-            address(SGX),      // Underlying token.
+            address(sgx),      // Underlying token.
             address(gsgx),     // Governance token.
-            Treasury,          // Treasury address.
-            Research,          // Research address.
+            treasury,          // treasury address.
+            research,          // research address.
             address(lockup)    // Lockup contract.
         );
 
@@ -56,8 +56,8 @@ contract LockUpHellTest is DSTest {
         vault.setNetworkBoost(1e18);        // SGX booster.
         vault.setRewardsWaitTime(24 hours); // rewards wait time.
 
-        SGX.setManager(address(vault), true);
-        SGX.setManager(msg.sender, true);
+        sgx.setManager(address(vault), true);
+        sgx.setManager(msg.sender, true);
 
         gsgx.setWithdrawCeil(100000e18);
     }
@@ -67,25 +67,25 @@ contract LockUpHellTest is DSTest {
     //////////////////////////////////////////////////////////////*/
 
     function testLockupRewards() public {
+        ERC20User user = new ERC20User(sgx);
         uint256 depositAmount = 10e18;
-        SGX.mint(msg.sender, depositAmount);
         
-        hevm.prank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), depositAmount);
+        sgx.mint(address(vault), depositAmount);
+
+        hevm.prank(address(vault));
+        sgx.approve(address(lockup), depositAmount);
+
+        hevm.prank(address(user)); // Impersonate user
 
         // Assert User has 0 lockups before doing anything.
-        assertEq(lockup.usersLockupLength(msg.sender), 0);
+        assertEq(lockup.usersLockupLength(address(user)), 0);
         
         hevm.prank(address(vault)); // Impersonate vaultFactory
-        lockup.lockupRewards(msg.sender, shortRewards, longRewards);
+        lockup.lockupRewards(address(user), shortRewards, longRewards);
 
         // Assert User has 1 lockup.
-        uint32 index = lockup.usersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(address(user));
         assertEq(index, 1);
-
-        // Assert current balance of SGX == pastAmount - (shortRewards + longRewards)
-        uint256 currentAmount = depositAmount - (shortRewards + longRewards);
-        assertEq(SGX.balanceOf(msg.sender), currentAmount);
         
         LockupType memory userLockup;
         
@@ -95,7 +95,7 @@ contract LockUpHellTest is DSTest {
          userLockup.longLockupPeriod,
          userLockup.shortLockupPeriod,
          userLockup.longRewards,
-         userLockup.shortRewards) = lockup.usersLockup(msg.sender, index);
+         userLockup.shortRewards) = lockup.usersLockup(address(user), index);
 
         // Assert User has not colected longRewards yet.
         assertTrue(!userLockup.longRewardsColected);
@@ -109,29 +109,35 @@ contract LockUpHellTest is DSTest {
         assertEq(userLockup.shortRewards, shortRewards);
         // Assert longtRewards are equal to what we set it to be.
         assertEq(userLockup.longRewards, longRewards);
+
+        hevm.stopPrank();
     }
 
     function testClaimShortLockup() public {
+        ERC20User user = new ERC20User(sgx);
         uint256 depositAmount = 10e18;
-        SGX.mint(msg.sender, depositAmount);
         
-        hevm.prank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), depositAmount);
+        sgx.mint(address(vault), depositAmount);
+
+        hevm.prank(address(vault));
+        sgx.approve(address(lockup), depositAmount);
         
         hevm.prank(address(vault)); // Impersonate vaultFactory
-        lockup.lockupRewards(msg.sender, shortRewards, longRewards);
+        lockup.lockupRewards(address(user), shortRewards, longRewards);
+
+        hevm.startPrank(address(user)); // Impersonate user
 
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
 
-        uint32 index = lockup.usersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(address(user));
         
-        uint256 balanceBefore = SGX.balanceOf(msg.sender);
+        uint256 balanceBefore = sgx.balanceOf(address(user));
 
         LockupType memory userLockup;
         
-        hevm.prank(msg.sender); // Impersonate user
-        lockup.claimShortLockup(msg.sender, index);
+        hevm.prank(address(user)); // Impersonate user
+        lockup.claimShortLockup(address(user), index);
 
         // Get lockup Info
         ( , 
@@ -139,35 +145,40 @@ contract LockUpHellTest is DSTest {
           ,
           ,
           ,
-         userLockup.shortRewards) = lockup.usersLockup(msg.sender, index);
+         userLockup.shortRewards) = lockup.usersLockup(address(user), index);
 
         assertTrue(userLockup.shortRewardsColected);
         assertEq(userLockup.shortRewards, 0);
-        assertEq(SGX.balanceOf(msg.sender), (balanceBefore+shortRewards));
-        balanceBefore = SGX.balanceOf(msg.sender);
+        assertEq(sgx.balanceOf(address(user)), (balanceBefore+shortRewards));
+        balanceBefore = sgx.balanceOf(address(user));
+
+        hevm.stopPrank();
     }
 
     function testClaimLongLockup() public {
+        ERC20User user = new ERC20User(sgx);
         uint256 depositAmount = 10e18;
-        SGX.mint(msg.sender, depositAmount);
         
-        hevm.prank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), depositAmount);
+        sgx.mint(address(vault), depositAmount);
+
+        hevm.prank(address(vault));
+        sgx.approve(address(lockup), depositAmount);
         
         hevm.prank(address(vault)); // Impersonate vaultFactory
-        lockup.lockupRewards(msg.sender, shortRewards, longRewards);
+        lockup.lockupRewards(address(user), shortRewards, longRewards);
 
-        hevm.startPrank(msg.sender); // Impersonate user
+        hevm.startPrank(address(user)); // Impersonate user
+
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
 
-        uint32 index = lockup.usersLockupLength(msg.sender);
+        uint32 index = lockup.usersLockupLength(address(user));
         
-        uint256 balanceBefore = SGX.balanceOf(msg.sender);
+        uint256 balanceBefore = sgx.balanceOf(address(user));
 
         LockupType memory userLockup;
         
-        lockup.claimLongLockup(msg.sender, index);
+        lockup.claimLongLockup(address(user), index);
 
         // Get lockup Info
         (userLockup.longRewardsColected, 
@@ -175,11 +186,11 @@ contract LockUpHellTest is DSTest {
           ,
           ,
          userLockup.longRewards,
-          ) = lockup.usersLockup(msg.sender, index);
+          ) = lockup.usersLockup(address(user), index);
 
         assertTrue(userLockup.longRewardsColected);
         assertEq(userLockup.longRewards, 0);
-        assertEq(SGX.balanceOf(msg.sender), (balanceBefore+longRewards));
+        assertEq(sgx.balanceOf(address(user)), (balanceBefore+longRewards));
 
         hevm.stopPrank();
     }
@@ -233,29 +244,29 @@ contract LockUpHellTest is DSTest {
 
     function testFailLockupRewardsNotUser() public {
         
-        SGX.mint(msg.sender, 10e18);
+        sgx.mint(msg.sender, 10e18);
         
         hevm.prank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), 10e18);
+        sgx.approve(address(lockup), 10e18);
 
         lockup.lockupRewards(address(0xbeef), shortRewards, longRewards);
     }
 
     function testFailLockupRewardsInsufficientFunds() public {
         
-        SGX.mint(msg.sender, 10e18);
+        sgx.mint(msg.sender, 10e18);
         
         hevm.prank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), 10e18);
+        sgx.approve(address(lockup), 10e18);
         
         lockup.lockupRewards(msg.sender, shortRewards, 15e18);
     }
 
     function testFailclaimShortLockupIndexInvalid() public {
-        SGX.mint(msg.sender, 10e18);
+        sgx.mint(msg.sender, 10e18);
         
         hevm.prank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), 10e18);
+        sgx.approve(address(lockup), 10e18);
         
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
@@ -266,10 +277,10 @@ contract LockUpHellTest is DSTest {
     }
 
     function testFailclaimShortLockupAlreadyClaimed() public {
-        SGX.mint(msg.sender, 10e18);
+        sgx.mint(msg.sender, 10e18);
         
         hevm.startPrank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), 10e18);
+        sgx.approve(address(lockup), 10e18);
         
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
@@ -277,8 +288,6 @@ contract LockUpHellTest is DSTest {
         hevm.warp(block.timestamp + 20 days);
 
         uint32 index = lockup.usersLockupLength(msg.sender);
-
-        LockupType memory userLockup;
         
         // Claim once.
         lockup.claimShortLockup(msg.sender, index);
@@ -288,10 +297,10 @@ contract LockUpHellTest is DSTest {
     }
 
     function testFailclaimShortLockupTooEarly() public {
-        SGX.mint(msg.sender, 10e18);
+        sgx.mint(msg.sender, 10e18);
         
         hevm.prank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), 10e18);
+        sgx.approve(address(lockup), 10e18);
         
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
@@ -304,10 +313,10 @@ contract LockUpHellTest is DSTest {
     }
 
     function testFailclaimLongLockupIndexInvalid() public {
-        SGX.mint(msg.sender, 10e18);
+        sgx.mint(msg.sender, 10e18);
         
         hevm.prank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), 10e18);
+        sgx.approve(address(lockup), 10e18);
         
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
@@ -318,10 +327,10 @@ contract LockUpHellTest is DSTest {
     }
 
     function testFailclaimLongLockupAlreadyClaimed() public {
-        SGX.mint(msg.sender, 10e18);
+        sgx.mint(msg.sender, 10e18);
         
         hevm.startPrank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), 10e18);
+        sgx.approve(address(lockup), 10e18);
         
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
@@ -329,8 +338,6 @@ contract LockUpHellTest is DSTest {
         hevm.warp(block.timestamp + 20 days);
 
         uint32 index = lockup.usersLockupLength(msg.sender);
-
-        LockupType memory userLockup;
         
         // Claim once.
         lockup.claimLongLockup(msg.sender, index);
@@ -340,10 +347,10 @@ contract LockUpHellTest is DSTest {
     }
 
     function testFailclaimLongLockupTooEarly() public {
-        SGX.mint(msg.sender, 10e18);
+        sgx.mint(msg.sender, 10e18);
         
         hevm.prank(msg.sender); // Impersonate user
-        SGX.approve(address(lockup), 10e18);
+        sgx.approve(address(lockup), 10e18);
         
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 

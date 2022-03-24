@@ -3,7 +3,7 @@ pragma solidity >= 0.8.4 < 0.9.0;
 
 import {ReentrancyGuard} from "@rari-capital/solmate/src/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC20Mintable} from "./interfaces/IERC20Mintable.sol";
+import {Isgx} from "./interfaces/Isgx.sol";
 import {IJoeRouter02} from "./interfaces/IJoeRouter02.sol";
 import {ILockupHell} from "./interfaces/ILockupHell.sol";
 import {IgSGX} from "./interfaces/IgSGX.sol";
@@ -32,7 +32,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     // WAVAX token address.
     address internal constant WAVAX = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
 
-    IERC20Mintable internal immutable sgx; // Official Subgenix Network token.
+    Isgx internal immutable sgx;           // Official Subgenix Network token.
     IgSGX internal immutable gSGX;         // Subgenix Governance token.
     address internal immutable lockup;     // LockUpHell contract.
     address public immutable treasury;     // Subgenix Treasury.
@@ -45,7 +45,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         address _research,
         address _lockup
     ) {
-        sgx = IERC20Mintable(_sgx);
+        sgx = Isgx(_sgx);
         gSGX = IgSGX(_gSGX);
         treasury = _treasury;
         research = _research;
@@ -621,7 +621,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
          uint256 curGSGXPercent,
          uint256 gSGXToContract) = calculateDistribution(claimableRewards); 
         
-        claimableRewards -= (burnAmount + curGSGXPercent + gSGXToContract);
+        claimableRewards -= (burnAmount + curGSGXPercent + gSGXToContract + shortLockup + longLockup);
 
         sgx.mint(address(this), mintAmount);
 
@@ -639,6 +639,8 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         success = sgx.transfer(user, claimableRewards); // Transfer token to users.
         if (!success) { revert Transfer(); }
         
+        success  = sgx.approve(address(lockup), (shortLockup + longLockup));
+        if (!success) { revert Approve(); }
         ILockupHell(lockup).lockupRewards(user, shortLockup, longLockup); // Lockup tokens
     }
 
@@ -730,7 +732,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         emit DebtReaid(amount);
 
         // Treasury needs to give permission to this contract.
-        sgx.burn(amount);
+        sgx.burnFrom(msg.sender, amount);
     }
 
     /// @notice mulDiv rounding down - (x*y)/denominator.
@@ -815,11 +817,5 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         if ((block.timestamp - lastClaimTime) >= internalConfigs.rewardsWaitTime) { return true; }
 
         return false;
-    }
-
-    /// @notice Gets the percentage of SGX being hold in the gSGX contract.
-    /// @return The percentage of SGX being hold in the gSGX contract.
-    function getGSGXDominance() external view returns (uint256) {
-        return mulDivDown(sgx.balanceOf(address(gSGX)), SCALE, sgx.totalSupply());
     }
 }

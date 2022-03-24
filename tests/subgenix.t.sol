@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >= 0.8.0;
+pragma solidity >= 0.8.4 < 0.9.0;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 
@@ -7,9 +7,9 @@ import {Subgenix} from "../contracts/Subgenix.sol";
 import {ERC20User} from "./utils/users/ERC20User.sol";
 
 contract SubgenixTest is DSTestPlus {
-    Subgenix token;
+    Subgenix internal token;
 
-    bytes32 constant PERMIT_TYPEHASH =
+    bytes32 internal constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     
     function setUp() public {
@@ -35,7 +35,7 @@ contract SubgenixTest is DSTestPlus {
 
     function testBurn() public {
         token.mint(address(0xBEEF), 1e18);
-        
+
         hevm.prank(address(0xBEEF));
         token.burn(0.9e18);
 
