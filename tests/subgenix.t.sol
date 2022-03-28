@@ -4,7 +4,8 @@ pragma solidity >= 0.8.4 < 0.9.0;
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 
 import {Subgenix} from "../contracts/Subgenix.sol";
-import {ERC20User} from "./utils/users/ERC20User.sol";
+import {ERC20User} from "@rari-capital/solmate/src/test/utils/users/ERC20User.sol";
+
 
 contract SubgenixTest is DSTestPlus {
     Subgenix internal token;

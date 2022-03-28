@@ -2,8 +2,9 @@ require("colors");
 
 async function main() {
 
-    const treasury = "";
-    const research = "";
+    const treasury = "0x59fcd31a5d1356844aD410e138D8a915E8AB20d0";
+    const research = "0x59fcd31a5d1356844aD410e138D8a915E8AB20d0";
+    const wavax = "0xfee34F9C22Bb731B187b6f09D21E4Fb07b2612f7"; // Testnet
 
     const [owner] = await ethers.getSigners();
 
@@ -37,6 +38,7 @@ async function main() {
     
     const VaultFactory = await ethers.getContractFactory("VaultFactory");
     const vault = await VaultFactory.deploy(
+        wavax,
         SGX.address,
         gSGX.address,
         treasury,
@@ -79,6 +81,7 @@ async function main() {
     await (await vault.setNetworkBoost(ethers.utils.parseUnits("1", 18))).wait();    // 1x
     await (await vault.setLiquidateVaultPercent(ethers.utils.parseUnits("15", 16))).wait(); // 15%
     await (await vault.setRewardsWaitTime(0)).wait(); // No time so we can test. in seconds
+    await (await vault.setAcceptedTokens(SGX.address, true)).wait(); // Add SGX to the list of accepted tokens
 
     console.log("   set league amounts..");
     await (await vault.setLeagueAmount(0, ethers.utils.parseUnits("2000", 18))).wait();
@@ -88,7 +91,6 @@ async function main() {
 
     console.log("   set token manager..");
     await (await SGX.setManager(vault.address, true)).wait();
-    await (await SGX.setManager(owner.address, true)).wait();
   
     console.log("   mint owner tokens...");
     await (await SGX.mint(owner.address, ethers.utils.parseEther("1000000"))).wait();

@@ -11,6 +11,7 @@ import {IgSGX} from "./interfaces/IgSGX.sol";
 error Unauthorized();
 error AlreadyHasVault();
 error DoenstHaveVault();
+error TokenNotAccepted();
 error TooEarlyToClaim();
 error AmountTooSmall();
 error AmountTooBig();
@@ -25,31 +26,33 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     
     // <--------------------------------------------------------> //
     // <----------------------- METADATA -----------------------> //
-    // <--------------------------------------------------------> // 
+    // <--------------------------------------------------------> //
 
-    // Trader Joe Router.
-    IJoeRouter02 internal constant JOE_ROUTER = IJoeRouter02(0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
-    // WAVAX token address.
-    address internal constant WAVAX = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
+    uint256 internal constant WAVAXCONVERSION = 7692307692307693;
 
-    Isgx internal immutable sgx;           // Official Subgenix Network token.
-    IgSGX internal immutable gSGX;         // Subgenix Governance token.
-    address internal immutable lockup;     // LockUpHell contract.
-    address public immutable treasury;     // Subgenix Treasury.
-    address public immutable research;     // Subgenix Research.
+    address internal immutable wavax;  // WAVAX token address.
+    address internal immutable gSGX;   // Subgenix Governance token.
+    address internal immutable sgx;    // Official Subgenix Network token.
+    address internal immutable lockup; // LockUpHell contract.
+    address public immutable treasury; // Subgenix Treasury.
+    address public immutable research; // Subgenix Research.
 
     constructor(
+        address _wavax,
         address _sgx,
         address _gSGX,
         address _treasury,
         address _research,
         address _lockup
     ) {
-        sgx = Isgx(_sgx);
-        gSGX = IgSGX(_gSGX);
+        wavax = _wavax;
+        sgx = _sgx;
+        gSGX = _gSGX;
         treasury = _treasury;
         research = _research;
         lockup = _lockup;
+
+        acceptedTokens[_wavax] = true;
     }
 
     // <--------------------------------------------------------> //
@@ -101,6 +104,8 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     
     /// @notice mapping of all users vaults.
     mapping(address => Vault) public usersVault;
+
+    mapping(address => bool) public acceptedTokens;
     
     /// @notice Emitted when a vault is created.
     /// @param user address, owner of the vault.
@@ -152,6 +157,12 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @notice Emitted when the circuit breaker is activated.
     /// @param stop bool, true if activated, false otherwise.
     event CircuitBreakerUpdated(bool stop);
+    
+    /// @notice Emitted when a token is added/removed from the accpected
+    ///         tokens mapping.
+    /// @param token address, token being considered.
+    /// @param action bool, true if token will be accepted, false otherwise.
+    event AcceptedTokensUpdated(address token, bool action);
 
     /// @notice Emitted when the minimum amount to be part of a 
     ///         certain league is changed.
@@ -257,6 +268,16 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         emit CircuitBreakerUpdated(stop);
     }
 
+    /// @notice Used to add/remove token from the accepted mapping.
+    /// @param token address, token being added/removed.
+    /// @param action bool, true if token will be accepted, false otherwise.
+    function setAcceptedTokens(address token, bool action) external onlyOwner {
+        acceptedTokens[token] = action;
+
+        emit AcceptedTokensUpdated(token, action);
+
+    }
+
     /// @notice Used to set maximum required to be part of a league.
     /// @param index uint256, the league we are modifing the maximum.
     /// @param amount uint256, the new maximum to be part of league `index`.
@@ -279,14 +300,18 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     // <--------------------------------------------------------> // 
 
     /// @notice Creates a vault for the user.
+    /// @param token address, the token being used to create a vault.
     /// @param amount uint256, amount that will be deposited in the vault.
-    function createVault(uint256 amount) external nonReentrant stopInEmergency {
-        if (usersVault[msg.sender].exists) { revert AlreadyHasVault(); }
-        if (amount < minVaultDeposit) { revert AmountTooSmall(); }
+    function createVault(address token, uint256 amount) external nonReentrant stopInEmergency {
+        if (usersVault[msg.sender].exists) revert AlreadyHasVault();
+        if (amount < minVaultDeposit) revert AmountTooSmall();
+        if (!acceptedTokens[token]) revert TokenNotAccepted();
 
-        uint256 amountBoosted = mulDivDown(amount, networkBoost, SCALE);
+        uint256 wavaxConv = amount;
 
-        VaultLeague tempLeague = getVaultLeague(amountBoosted);
+        if (token == wavax) wavaxConv = mulDivDown(amount, WAVAXCONVERSION, SCALE);
+
+        uint256 amountBoosted = mulDivDown(wavaxConv, networkBoost, SCALE);
 
         usersVault[msg.sender] = Vault({
             exists: true,
@@ -294,14 +319,14 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             uncollectedRewards: 0,
             balance: amountBoosted,
             interestLength: pastInterestRates.length,
-            league: tempLeague
+            league: getVaultLeague(amountBoosted)
         });
 
         totalNetworkVaults += 1;
 
         uint256 swapAmount;
 
-        bool success = sgx.transferFrom(msg.sender, address(this), amount);
+        bool success = Isgx(token).transferFrom(msg.sender, address(this), amount);
         if (!success) { revert TransferFrom(); }
 
         if (internalConfigs.allowTreasurySwap) {
@@ -310,26 +335,32 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             swapSGXforAVAX(swapAmount);
         }
 
-        success = sgx.approve(treasury, amount - swapAmount);
+        uint256 result = amount - swapAmount;
+
+        success = Isgx(token).approve(treasury, result);
         if (!success) {revert Approve(); }
-        success = sgx.transfer(treasury, amount - swapAmount);
+        success = Isgx(token).transfer(treasury, result);
         if (!success) {revert Transfer(); }
 
-        emit VaultCreated(msg.sender, amount, block.timestamp);
+        emit VaultCreated(msg.sender, amountBoosted, block.timestamp);
     }
 
     /// @notice Deposits `amount` of SGX in the vault.
+    /// @param token address, the token being used to deposit in the vault.
     /// @param amount uint256, amount that will be deposited in the vault.
-    function depositInVault(uint256 amount) external nonReentrant stopInEmergency {
+    function depositInVault(address token, uint256 amount) external nonReentrant stopInEmergency {
         Vault memory userVault = usersVault[msg.sender];
         
         if (!userVault.exists) { revert DoenstHaveVault(); }
+        if (!acceptedTokens[token]) revert TokenNotAccepted();
 
-        uint256 amountBoosted = mulDivDown(amount, networkBoost, SCALE);
+        uint256 wavaxConv = amount;
+
+        if (token == wavax) wavaxConv = mulDivDown(amount, WAVAXCONVERSION, SCALE);
+
+        uint256 amountBoosted = mulDivDown(wavaxConv, networkBoost, SCALE);
 
         uint256 totalBalance = userVault.balance + amountBoosted;
-
-        VaultLeague tempLeague = getVaultLeague(totalBalance);
 
         uint256 interest;
 
@@ -345,9 +376,8 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             );
         }
 
-        uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
-
-        uint256 rewardsPercent = mulDivDown(timeElapsed, interestRate, BASETIME);
+        // ((timeElapsed) * interestRate) / BASETIME
+        uint256 rewardsPercent = mulDivDown((block.timestamp - userVault.lastClaimTime), interestRate, BASETIME);
 
         interest += mulDivDown(userVault.balance, rewardsPercent, SCALE);
 
@@ -355,14 +385,14 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         userVault.lastClaimTime = block.timestamp;
         userVault.uncollectedRewards += interest;
         userVault.balance = totalBalance;
-        userVault.league = tempLeague;
+        userVault.league = getVaultLeague(totalBalance);
 
         usersVault[msg.sender] = userVault;
 
         emit SuccessfullyDeposited(msg.sender, amountBoosted); 
 
         // User needs to approve this contract to spend `token`.
-        bool success = sgx.transferFrom(msg.sender, address(this), amount);
+        bool success = Isgx(token).transferFrom(msg.sender, address(this), amount);
         if (!success) { revert TransferFrom(); }
 
         uint256 swapAmount;
@@ -373,9 +403,11 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             swapSGXforAVAX(swapAmount);
         }
 
-        success = sgx.approve(treasury, amount - swapAmount);
+        uint256 result = amount - swapAmount;
+
+        success = Isgx(token).approve(treasury, result);
         if (!success) {revert Approve(); }
-        success = sgx.transfer(treasury, amount - swapAmount);
+        success = Isgx(token).transfer(treasury, result);
         if (!success) {revert Transfer(); }
     }
 
@@ -387,10 +419,8 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         if (msg.sender != user) { revert Unauthorized(); }
         if (!userVault.exists) { revert DoenstHaveVault(); }
 
-        // 1. Claim all available rewards.
-        uint256 timeElapsed = block.timestamp - userVault.lastClaimTime;
-
-        uint256 rewardsPercent = mulDivDown(timeElapsed, interestRate, BASETIME);
+        // ((timeElapsed) * interestRate) / BASETIME
+        uint256 rewardsPercent = mulDivDown((block.timestamp - userVault.lastClaimTime), interestRate, BASETIME);
 
         uint256 claimableRewards = mulDivDown(userVault.balance, rewardsPercent, SCALE) + userVault.uncollectedRewards;
 
@@ -407,20 +437,20 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         distributeRewards(claimableRewards,  user);
 
-        sgx.mint(user, sgxPercent);
+        Isgx(sgx).mint(user, sgxPercent);
     }
 
     /// @notice Allows owner to create a vault for a specific user.
     /// @param user address, the user the owner is creating the vault for.
+    /// @param token address, the token being used to create a vault.
     /// @param amount uint256, the amount being deposited in the vault.
-    function createOwnerVault(address user, uint256 amount) external onlyOwner {
+    function createOwnerVault(address user, address token, uint256 amount) external onlyOwner {
         
         if (usersVault[msg.sender].exists) { revert AlreadyHasVault(); }
         if (amount < minVaultDeposit) { revert AmountTooSmall(); }
+        if (!acceptedTokens[token]) revert TokenNotAccepted();
 
         uint256 amountBoosted = mulDivDown(amount, networkBoost, SCALE);
-
-        VaultLeague tempLeague = getVaultLeague(amountBoosted);
 
         usersVault[user] = Vault({
             exists: true,
@@ -428,20 +458,20 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             uncollectedRewards: 0,
             balance: amountBoosted,
             interestLength: pastInterestRates.length,
-            league: tempLeague
+            league: getVaultLeague(amountBoosted)
         });
 
         totalNetworkVaults += 1;
 
-        bool success = sgx.transferFrom(msg.sender, address(this), amount);
+        bool success = Isgx(token).transferFrom(msg.sender, address(this), amount);
         if (!success) {revert TransferFrom(); }
 
-        success = sgx.approve(treasury, amount);
+        success = Isgx(token).approve(treasury, amount);
         if (!success) {revert Approve(); }
-        success = sgx.transfer(treasury, amount);
+        success = Isgx(token).transfer(treasury, amount);
         if (!success) {revert Transfer(); }
 
-        emit VaultCreated(user, amount, block.timestamp);
+        emit VaultCreated(user, amountBoosted, block.timestamp);
     }
 
     /// @notice Calculates the total interest generated based on past interest rates.
@@ -459,14 +489,15 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         
         interestLength = userInterestLength;
         lastClaimTime = userLastClaimTime;
-        uint256 timeElapsed;
         uint256 rewardsPercent;
-        uint256 pastInterestLength = pastInterestRates.length;
 
-        for (interestLength; interestLength < pastInterestLength; interestLength+=1) {
+        for (interestLength; interestLength < pastInterestRates.length; interestLength+=1) {
             
-            timeElapsed = timeWhenChanged[interestLength] - lastClaimTime;
-            rewardsPercent = mulDivDown(timeElapsed, pastInterestRates[interestLength], BASETIME);
+            rewardsPercent = mulDivDown(
+                (timeWhenChanged[interestLength] - lastClaimTime), 
+                pastInterestRates[interestLength], 
+                BASETIME
+            );
 
             interest += mulDivDown(userBalance, rewardsPercent, SCALE);
             
@@ -503,19 +534,21 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @param swapAmount uint256, the amount of SGX we are making the swap.
     function swapSGXforAVAX(uint256 swapAmount) private {
 
-        bool success = sgx.approve(address(JOE_ROUTER), swapAmount);
+        IJoeRouter02 joeRouter = IJoeRouter02(0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
+
+        bool success = Isgx(sgx).approve(address(joeRouter), swapAmount);
         if (!success) {revert Approve(); }
 
         address[] memory path;
         path = new address[](2);
         path[0] = address(sgx);
-        path[1] = WAVAX;
+        path[1] = wavax;
 
         uint256 toTreasury = mulDivDown(swapAmount, 75e16, SCALE);
         uint256 toResearch = swapAmount - toTreasury;
         
-        JOE_ROUTER.swapExactTokensForAVAX(toTreasury, 0, path, treasury, block.timestamp);
-        JOE_ROUTER.swapExactTokensForAVAX(toResearch, 0, path, research, block.timestamp);
+        joeRouter.swapExactTokensForAVAX(toTreasury, 0, path, treasury, block.timestamp);
+        joeRouter.swapExactTokensForAVAX(toResearch, 0, path, research, block.timestamp);
     }
 
     // <--------------------------------------------------------> //
@@ -573,11 +606,9 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         
         uint256 localLastClaimTime = userVault.lastClaimTime;
 
-        if (msg.sender != user) { revert Unauthorized(); }
-        if (!userVault.exists) { revert DoenstHaveVault(); }
-        if ((block.timestamp - localLastClaimTime) < internalConfigs.rewardsWaitTime) { 
-            revert TooEarlyToClaim(); 
-        }
+        if (msg.sender != user) revert Unauthorized();
+        if (!userVault.exists) revert DoenstHaveVault();
+        if ((block.timestamp - localLastClaimTime) < internalConfigs.rewardsWaitTime) revert TooEarlyToClaim();
 
         uint256 claimableRewards;
 
@@ -593,9 +624,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             );
         }
 
-        uint256 timeElapsed = block.timestamp - localLastClaimTime;
-
-        uint256 rewardsPercent = mulDivDown(timeElapsed, interestRate, BASETIME);
+        uint256 rewardsPercent = mulDivDown((block.timestamp - localLastClaimTime), interestRate, BASETIME);
 
         claimableRewards += mulDivDown(userVault.balance, rewardsPercent, SCALE) + userVault.uncollectedRewards;
 
@@ -623,25 +652,27 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         
         claimableRewards -= (burnAmount + curGSGXPercent + gSGXToContract + shortLockup + longLockup);
 
-        sgx.mint(address(this), mintAmount);
+        Isgx(sgx).mint(address(this), mintAmount);
 
-        sgx.burn(burnAmount); // Burn token
+        Isgx(sgx).burn(burnAmount); // Burn token
 
-        // Convert to gSGX and send to user.
-        bool success = sgx.approve(address(gSGX), curGSGXPercent);
-        if (!success) { revert Approve(); }
-        gSGX.deposit(user, curGSGXPercent);
-
-        // send to gSGX Contracts
-        success = sgx.transfer(address(gSGX), gSGXToContract);
-        if (!success) { revert Transfer(); }
-
-        success = sgx.transfer(user, claimableRewards); // Transfer token to users.
+        // send `gSGXToContract` to gSGX Contracts
+        bool success = Isgx(sgx).transfer(address(gSGX), gSGXToContract);
         if (!success) { revert Transfer(); }
         
-        success  = sgx.approve(address(lockup), (shortLockup + longLockup));
+        // Approve and lock rewards.
+        success  = Isgx(sgx).approve(address(lockup), (shortLockup + longLockup));
         if (!success) { revert Approve(); }
         ILockupHell(lockup).lockupRewards(user, shortLockup, longLockup); // Lockup tokens
+
+        // Convert to gSGX and send to user.
+        success = Isgx(sgx).approve(address(gSGX), curGSGXPercent);
+        if (!success) { revert Approve(); }
+        IgSGX(gSGX).deposit(user, curGSGXPercent);
+        
+        // Send immediate rewards to user.
+        success = Isgx(sgx).transfer(user, claimableRewards); // Transfer token to users.
+        if (!success) { revert Transfer(); }
     }
 
     /// @notice Calculate the final value of the percentage based on the rewards amount.
@@ -732,7 +763,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         emit DebtReaid(amount);
 
         // Treasury needs to give permission to this contract.
-        sgx.burnFrom(msg.sender, amount);
+        Isgx(sgx).burnFrom(msg.sender, amount);
     }
 
     /// @notice mulDiv rounding down - (x*y)/denominator.

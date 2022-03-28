@@ -7,12 +7,13 @@ import {Subgenix} from "../contracts/Subgenix.sol";
 import {VaultFactory} from "../contracts/VaultFactory.sol";
 import {LockupHell} from "../contracts/lockupHell.sol";
 import {GovernanceSGX} from "../contracts/Governancesgx.sol";
-import {ERC20User} from "./utils/users/ERC20User.sol";
+import {MockWAVAX} from "./utils/mocks/MockWAVAX.sol";
 
 contract LockUpHellTest is DSTestPlus {
     VaultFactory internal vault;
     LockupHell internal lockup;
     Subgenix internal sgx;
+    MockWAVAX internal wavax;
     GovernanceSGX internal gsgx;
     address internal treasury = address(0xBEEF);
     address internal research = address(0xABCD);
@@ -30,11 +31,13 @@ contract LockUpHellTest is DSTestPlus {
     }
     
     function setUp() public {
+        wavax = new MockWAVAX();
         sgx = new Subgenix("Subgenix Currency", "SGX", 18);
         gsgx = new GovernanceSGX(address(sgx));
         lockup = new LockupHell(address(sgx));
         
         vault = new VaultFactory(
+            address(wavax),    // Wrapped avax.
             address(sgx),      // Underlying token.
             address(gsgx),     // Governance token.
             treasury,          // treasury address.
@@ -67,7 +70,7 @@ contract LockUpHellTest is DSTestPlus {
     //////////////////////////////////////////////////////////////*/
 
     function testLockupRewards() public {
-        ERC20User user = new ERC20User(sgx);
+        address user = address(0x0ABCD);
         uint256 depositAmount = 10e18;
         
         sgx.mint(address(vault), depositAmount);
@@ -114,7 +117,7 @@ contract LockUpHellTest is DSTestPlus {
     }
 
     function testClaimShortLockup() public {
-        ERC20User user = new ERC20User(sgx);
+        address user = address(0x0ABCD);
         uint256 depositAmount = 10e18;
         
         sgx.mint(address(vault), depositAmount);
@@ -156,7 +159,7 @@ contract LockUpHellTest is DSTestPlus {
     }
 
     function testClaimLongLockup() public {
-        ERC20User user = new ERC20User(sgx);
+        address user = address(0x0ABCD);
         uint256 depositAmount = 10e18;
         
         sgx.mint(address(vault), depositAmount);
