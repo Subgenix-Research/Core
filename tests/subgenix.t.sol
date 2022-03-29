@@ -348,6 +348,31 @@ contract SubgenixTest is DSTestPlus {
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
     }
 
+    function testFailTransferWhenPaused() public {
+        token.pauseContract(true);
+
+        ERC20User user = new ERC20User(token);
+        
+        token.mint(address(user), 1e18);
+
+        hevm.prank(address(user));
+        token.transfer(address(0xBEEF), 1e18);
+    }
+
+    function testFailTransferFromWhenPaused() public {
+        token.pauseContract(true);
+
+        ERC20User from = new ERC20User(token);
+
+        token.mint(address(from), 1e18);
+
+        hevm.startPrank(address(from));
+        token.approve(address(this), 1e18);
+        token.transferFrom(address(from), address(0xBEEF), 1e18);
+
+        hevm.stopPrank();
+    }
+
     function testFailBurnInsufficientBalance(
         address to,
         uint256 mintAmount,
@@ -507,6 +532,27 @@ contract SubgenixTest is DSTestPlus {
 
         hevm.prank(user);
         token.setManager(user, true);
+    }
+
+    function testFailTransferWhenPaused(address user, address to) public {
+        token.pauseContract(true);
+        
+        token.mint(address(user), 1e18);
+
+        hevm.prank(address(user));
+        token.transfer(to, 1e18);
+    }
+
+    function testFailTransferFromWhenPaused(address from, address to) public {
+        token.pauseContract(true);
+
+        token.mint(from, 1e18);
+
+        hevm.startPrank(from);
+        token.approve(address(this), 1e18);
+        token.transferFrom(from, to, 1e18);
+
+        hevm.stopPrank();
     }
 
 }

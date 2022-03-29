@@ -107,11 +107,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
     // vaultFactory contract address.
     address internal vaultFactory;
 
-    // only the vaultFactory address can access function with this modifier.
-    modifier onlyVaultFactory() {
-        if (msg.sender != vaultFactory) { revert Unauthorized(); }
-        _;
-    }
 
     // Global rates.
     Rates public rates;
@@ -138,7 +133,10 @@ contract LockupHell is Ownable, ReentrancyGuard {
         address user,
         uint256 shortLockupRewards, 
         uint256 longLockupRewards
-    ) external nonReentrant onlyVaultFactory {
+    ) external nonReentrant {
+
+        // only the vaultFactory address can access function with this modifier.
+        if (msg.sender != vaultFactory) revert Unauthorized();
 
         // first it checks how many `lockups` the user has and sets
         // the next index to be 'length+1' and finally it updates the 
@@ -146,8 +144,11 @@ contract LockupHell is Ownable, ReentrancyGuard {
         uint32 index = usersLockupLength[user] + 1;
         usersLockupLength[user] = index;
 
+        // The total amount being transfered.
+        uint256 amount = (shortLockupRewards + longLockupRewards);
+
         // Add the total value of lockup rewards to the users mapping.
-        usersTotalLocked[user] += (shortLockupRewards + longLockupRewards);
+        usersTotalLocked[user] += amount;
 
         // Creates a new Lockup and add it to the new index location
         // of the usersLockup mapping.
@@ -160,21 +161,14 @@ contract LockupHell is Ownable, ReentrancyGuard {
                 shortRewards: shortLockupRewards
         });
 
-        // Transfer the rewards that are going to be locked up from the user to this
-        // contract. They are placed in the end of the function after all the internal
-        // work and state changes are done to avoid Reentrancy Attacks.
-        bool success = Isgx(sgx).transferFrom(address(vaultFactory), address(this), shortLockupRewards);
-        if (!success) { revert TransferFrom(); }
-        
-        success = Isgx(sgx).transferFrom(address(vaultFactory), address(this), longLockupRewards);
-        if (!success) { revert TransferFrom(); }
+        // Transfer the rewards that are going to be locked up from the user to this contract.
+        Isgx(sgx).transferFrom(address(vaultFactory), address(this), amount);
 
         emit RewardsLocked(user, shortLockupRewards, longLockupRewards); 
     }
 
     /// @notice After the shorter lockup period is over, user can claim his rewards using this function.
-    /// @dev Function called from the UI to allow user to claim his rewards. We use the 'nonReentrant' modifier
-    ///      from the `ReentrancyGuard` made by openZeppelin as an extra layer of protection against Reentrancy Attacks.
+    /// @dev Function called from the UI to allow user to claim his rewards.
     /// @param user address, the user who is claiming rewards. 
     /// @param index uint32, the index of the `lockup` the user is refering to.
     function claimShortLockup(address user, uint32 index) external nonReentrant {
@@ -190,10 +184,10 @@ contract LockupHell is Ownable, ReentrancyGuard {
         //    when the rewards were first locked.
         //
         // If all three are true, the user can safely colect their short lockup rewards.
-        if (msg.sender != user) { revert Unauthorized(); }
-        if (usersLockupLength[user] < index) { revert IndexInvalid(); }
-        if(temp.shortRewardsCollected) { revert AlreadyClaimed(); }
-        if (block.timestamp <= temp.shortLockupUnlockDate) { revert TooEarlyToClaim(); }
+        if (msg.sender != user) revert Unauthorized();
+        if (usersLockupLength[user] < index) revert IndexInvalid();
+        if(temp.shortRewardsCollected) revert AlreadyClaimed();
+        if (block.timestamp <= temp.shortLockupUnlockDate) revert TooEarlyToClaim();
 
         // Make a temporary copy of the user `lockup` and get the short lockup rewards amount.
         uint256 amount = temp.shortRewards;
@@ -211,8 +205,7 @@ contract LockupHell is Ownable, ReentrancyGuard {
         usersTotalLocked[user] -= amount;
 
         // Transfer the short rewards amount to user.
-        bool success = Isgx(sgx).transfer(user, amount);
-        if (!success) { revert Transfer(); }
+        Isgx(sgx).transfer(user, amount);
         
         emit UnlockShortLockup(user, amount);
     }
@@ -237,10 +230,10 @@ contract LockupHell is Ownable, ReentrancyGuard {
         //    when the rewards were first locked.
         //
         // If all three are true, the user can safely colect their long lockup rewards.
-        if (msg.sender != user) { revert Unauthorized(); }
-        if (usersLockupLength[user] < index) { revert IndexInvalid(); }
-        if(temp.shortRewardsCollected) { revert AlreadyClaimed(); }
-        if (block.timestamp <= temp.shortLockupUnlockDate) { revert TooEarlyToClaim(); }
+        if (msg.sender != user) revert Unauthorized();
+        if (usersLockupLength[user] < index) revert IndexInvalid();
+        if(temp.shortRewardsCollected) revert AlreadyClaimed();
+        if (block.timestamp <= temp.shortLockupUnlockDate) revert TooEarlyToClaim();
 
         uint256 amount = temp.longRewards;
         
@@ -257,8 +250,7 @@ contract LockupHell is Ownable, ReentrancyGuard {
         usersTotalLocked[user] -= amount;
 
         // Transfer the long rewards amount to user.
-        bool success = Isgx(sgx).transfer(user, amount);
-        if (!success) { revert Transfer(); }
+        Isgx(sgx).transfer(user, amount);
 
         emit UnlockLongLockup(user, amount);
     }
@@ -300,7 +292,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
     /// @dev Allows the owner of the contract to change the `shortLockupTime` value.
     function setShortLockupTime(uint32 value) external onlyOwner {
         rates.shortLockupTime = value;
-
         emit ShortLockupTimeChanged(value);
     }
 
@@ -309,7 +300,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
     /// @dev Allows the owner of the contract to change the `longLockupTime` value.
     function setLongLockupTime(uint32 value) external onlyOwner { 
         rates.longLockupTime = value;
-
         emit LongLockupTimeChanged(value);
     }
 
@@ -318,7 +308,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
     /// @dev Allows the owner of the contract to change the `shortPercentage` value.    
     function setShortPercentage(uint256 percentage) external onlyOwner {
         rates.shortPercentage = percentage;
-
         emit ShortPercentageChanged(percentage);
     }
 
@@ -327,7 +316,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
     /// @dev Allows the owner of the contract to change the `long` value.
     function setLongPercentage(uint256 percentage) external onlyOwner { 
         rates.longPercentage = percentage;
-
         emit LongPercentageChanged(percentage);
     }
 

@@ -77,9 +77,10 @@ contract VaultFactoryTest is DSTestPlus {
         vault.setAcceptedTokens(address(sgx), true); // Add sgx to the accepted tokens
 
         sgx.setManager(address(vault), true);
-        sgx.setManager(address(gSGX), true);
-        sgx.setManager(address(lockup), true);
-        sgx.pauseContract(true);
+        
+        //sgx.setManager(address(gSGX), true);
+        //sgx.setManager(address(lockup), true);
+        //sgx.pauseContract(true);
 
         hevm.stopPrank();
     }
@@ -95,57 +96,173 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testCreateVault() public {
         address user = address(0x0ABCD);
-        uint256 amount = 200e18;
+        uint256 deposit = 2e18;
+
+        bool exists;
+        uint256 lastClaimTime;
+        uint256 uncollectedRewards;
         uint256 balance;
+        uint256 interestLength;
+        VaultFactory.VaultLeague league;
  
         // 1. Mint token to account.
-        sgx.mint(address(user), amount);
+        sgx.mint(address(user), 10e18);
         uint256 balanceBefore = sgx.balanceOf(address(user));
-        assertEq(balanceBefore, amount);
 
-        // 2. Approve this address to spend impersonated account tokens.
+        // 2. Impersonate user and approve this address to 
+        //    spend his tokens.
         hevm.startPrank(address(user));
-        sgx.approve(address(vault), amount);
+        sgx.approve(address(vault), deposit);
 
-        // 3. Impersonate user. 
-        vault.createVault(address(sgx), amount);
+        // 3. Create Vault.
+        vault.createVault(address(sgx), deposit);
 
-        ( , , balance, ) = vault.getVaultInfo(address(user));
+        (exists,
+         lastClaimTime, 
+         uncollectedRewards,
+         balance, 
+         interestLength, 
+         league) = vault.usersVault(address(user));
 
+        assertTrue(exists);
+        assertEq(lastClaimTime, block.timestamp);
+        assertEq(balance, deposit);
+        assertEq(interestLength, vault.getPastInterestRatesLength());
+        assertTrue(league == vault.getVaultLeague(deposit));
         assertEq(vault.totalNetworkVaults(), 1);
-        assertEq(sgx.balanceOf(treasury), amount);
-        assertEq(balance, amount);
-        assertEq(sgx.balanceOf(address(user)), balanceBefore - amount);
+        assertEq(sgx.balanceOf(treasury), deposit);
+        assertEq(sgx.balanceOf(address(user)), balanceBefore - deposit);
 
         hevm.stopPrank();
     }
 
     function testCreateVaultWithWAVAX() public {
         address user = address(0x0ABCD);
-        uint256 amount = 10e18;
+        uint256 deposit = 2e18;
+
+        bool exists;
+        uint256 lastClaimTime;
+        uint256 uncollectedRewards;
         uint256 balance;
+        uint256 interestLength;
+        VaultFactory.VaultLeague league;
  
         // 1. Mint token to account.
-        wavax.mint(address(user), amount);
+        wavax.mint(address(user), 10e18);
         uint256 balanceBefore = wavax.balanceOf(address(user));
 
         // 2. Approve this address to spend impersonated account tokens.
         hevm.startPrank(address(user));
-        wavax.approve(address(vault), amount);
+        wavax.approve(address(vault), deposit);
 
         // 3. Impersonate user. 
-        vault.createVault(address(wavax), amount);
+        vault.createVault(address(wavax), deposit);
 
-        ( , , balance, ) = vault.getVaultInfo(address(user));
+        (exists,
+         lastClaimTime, 
+         uncollectedRewards,
+         balance, 
+         interestLength, 
+         league) = vault.usersVault(address(user));
 
+        assertTrue(exists);
+        assertEq(lastClaimTime, block.timestamp);
+        assertEq(balance, mulDivDown(deposit, WAVAXCONVERSION, 1e18));
+        assertEq(interestLength, vault.getPastInterestRatesLength());
+        assertTrue(league == vault.getVaultLeague(deposit));
         assertEq(vault.totalNetworkVaults(), 1);
-        assertEq(wavax.balanceOf(treasury), amount);
-        assertEq(balance, mulDivDown(amount, WAVAXCONVERSION, 1e18));
-        assertEq(wavax.balanceOf(address(user)), balanceBefore - amount);
+        assertEq(wavax.balanceOf(treasury), deposit);
+        assertEq(wavax.balanceOf(address(user)), balanceBefore - deposit);
 
         hevm.stopPrank();
     }
 
+    function testCreateVaultInLiquidityPhase() public {
+        vault.setLiquidityAccumulationPhase(true);
+        
+        address user = address(0x0ABCD);
+        uint256 deposit = 2e18;
+
+        bool exists;
+        uint256 lastClaimTime;
+        uint256 uncollectedRewards;
+        uint256 balance;
+        uint256 interestLength;
+        VaultFactory.VaultLeague league;
+ 
+        // 1. Mint token to account.
+        sgx.mint(address(user), 10e18);
+        uint256 balanceBefore = sgx.balanceOf(address(user));
+
+        // 2. Impersonate user and approve this address to 
+        //    spend his tokens.
+        hevm.startPrank(address(user));
+        sgx.approve(address(vault), deposit);
+
+        // 3. Create Vault.
+        vault.createVault(address(sgx), deposit);
+
+        (exists,
+         lastClaimTime, 
+         uncollectedRewards,
+         balance, 
+         interestLength, 
+         league) = vault.usersVault(address(user));
+
+        assertTrue(exists);
+        assertEq(lastClaimTime, block.timestamp);
+        assertEq(balance, deposit);
+        assertEq(interestLength, vault.getPastInterestRatesLength());
+        assertTrue(league == vault.getVaultLeague(deposit));
+        assertEq(vault.totalNetworkVaults(), 1);
+        assertEq(sgx.balanceOf(address(vault)), deposit);
+        assertEq(sgx.balanceOf(address(user)), balanceBefore - deposit);
+
+        hevm.stopPrank();
+    }
+
+    function testCreateVaultInLiquidityPhaseWithWAVAX() public {
+        vault.setLiquidityAccumulationPhase(true);
+        
+        address user = address(0x0ABCD);
+        uint256 deposit = 2e18;
+
+        bool exists;
+        uint256 lastClaimTime;
+        uint256 uncollectedRewards;
+        uint256 balance;
+        uint256 interestLength;
+        VaultFactory.VaultLeague league;
+ 
+        // 1. Mint token to account.
+        wavax.mint(address(user), 10e18);
+        uint256 balanceBefore = wavax.balanceOf(address(user));
+
+        // 2. Approve this address to spend impersonated account tokens.
+        hevm.startPrank(address(user));
+        wavax.approve(address(vault), deposit);
+
+        // 3. Impersonate user. 
+        vault.createVault(address(wavax), deposit);
+
+        (exists,
+         lastClaimTime, 
+         uncollectedRewards,
+         balance, 
+         interestLength, 
+         league) = vault.usersVault(address(user));
+
+        assertTrue(exists);
+        assertEq(lastClaimTime, block.timestamp);
+        assertEq(balance, mulDivDown(deposit, WAVAXCONVERSION, 1e18));
+        assertEq(interestLength, vault.getPastInterestRatesLength());
+        assertTrue(league == vault.getVaultLeague(deposit));
+        assertEq(vault.totalNetworkVaults(), 1);
+        assertEq(wavax.balanceOf(address(vault)), deposit);
+        assertEq(wavax.balanceOf(address(user)), balanceBefore - deposit);
+
+        hevm.stopPrank();
+    }
 
     function testDepositInVault() public {
         address user = address(0x0ABCD);
@@ -165,13 +282,13 @@ contract VaultFactoryTest is DSTestPlus {
 
         vault.createVault(address(sgx), deposit);
         
-        ( , , balance, ) = vault.getVaultInfo(address(user));
+        ( , , , balance, , ) = vault.usersVault(address(user));
 
         uint256 currentBalance = balanceBefore - deposit;
 
         vault.depositInVault(address(sgx), deposit); 
         
-        ( , , balance2, ) = vault.getVaultInfo(address(user));
+        ( , , , balance2, , ) = vault.usersVault(address(user));
 
         uint256 currentBalance2 = (currentBalance - deposit);
 
@@ -199,11 +316,11 @@ contract VaultFactoryTest is DSTestPlus {
 
         vault.createVault(address(wavax), deposit);
         
-        ( , , balance, ) = vault.getVaultInfo(address(user));
+        ( , , , balance, , ) = vault.usersVault(address(user));
 
         vault.depositInVault(address(wavax), deposit);
 
-        ( , , balance2, ) = vault.getVaultInfo(address(user));
+        ( , , , balance2, , ) = vault.usersVault(address(user));
 
         assertEq(balance2, (mulDivDown(deposit, WAVAXCONVERSION, 1e18)*2));
         assertEq(wavax.balanceOf(address(user)), (balanceBefore - (deposit*2)));
@@ -260,7 +377,7 @@ contract VaultFactoryTest is DSTestPlus {
          
         vault.createVault(address(sgx), deposit);
 
-        ( , , balance, ) = vault.getVaultInfo(address(user));
+        ( , , , balance, , ) = vault.usersVault(address(user));
 
         // *---- Jump in time and claim rewards ----* //
 
@@ -309,7 +426,7 @@ contract VaultFactoryTest is DSTestPlus {
         // 3. Impersonate user
         vault.createVault(address(sgx), deposit);
         
-        ( , , balance, ) = vault.getVaultInfo(address(user));
+        ( , , , balance, , ) = vault.usersVault(address(user));
         hevm.stopPrank();
 
         hevm.warp(block.timestamp + 1 days);
@@ -338,7 +455,7 @@ contract VaultFactoryTest is DSTestPlus {
         // 3. Impersonate user
         vault.createVault(address(sgx), deposit);
         
-        ( , , balance, ) = vault.getVaultInfo(msg.sender);
+        ( , , , balance, , ) = vault.usersVault(msg.sender);
         hevm.stopPrank();
 
         hevm.warp(block.timestamp + 1 days);
@@ -362,49 +479,86 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailCreateVaultAlreadyHasOne() public {
         address user = address(0x0ABCD);
-        uint256 amount = 200e18;
+        uint256 deposit = 2e18;
  
         // 1. Mint token to account.
-        sgx.mint(address(user), amount);
+        sgx.mint(address(user), 10e18);
 
         // 2. Approve vault to spend impersonated account tokens.
-        sgx.approve(address(vault), amount);
+        hevm.startPrank(address(user));
+        sgx.approve(address(vault), 10e18);
 
         // 3. Create vault. 
-        hevm.startPrank(address(user));
-        vault.createVault(address(sgx), amount);
+        vault.createVault(address(sgx), deposit);
 
         // 4. Try to create vault again.
-        vault.createVault(address(sgx), amount);
+        vault.createVault(address(sgx), deposit);
 
         hevm.stopPrank();
     }
     function testFailCreateVaultAmountTooSmall() public {
         address user = address(0x0ABCD);
-        uint256 amount = 1e16;
+        uint256 deposit = 1e16;
  
         // 1. Mint token to account.
-        sgx.mint(address(user), amount);
+        sgx.mint(address(user), 10e18);
 
         // 2. Approve vault to spend impersonated account tokens.
         hevm.startPrank(address(user));
-        sgx.approve(address(vault), amount);
+        sgx.approve(address(vault), deposit);
 
         // 3. Create vault. 
-        vault.createVault(address(sgx), amount);
+        vault.createVault(address(sgx), deposit);
 
         hevm.stopPrank();
     }
-    function testFailCreateVaultNotEnoughFunds() public {
+
+    function testFailCreateVaultTokenNotAccepted() public {
+        address user = address(0x0ABCD);
+        uint256 deposit = 2e18;
+ 
+        // 1. Mint token to account.
+        sgx.mint(address(user), 10e18);
+
+        // 2. Approve vault to spend impersonated account tokens.
+        hevm.startPrank(address(user));
+        sgx.approve(address(vault), 10e18);
+
+        // 3. Create vault. 
+        vault.createVault(address(0x00DEAD), deposit);
+
+        hevm.stopPrank();
+    }
+
+    function testFailCreateVaultTransferFromUnderflow() public {
         address user = address(0x0ABCD);
         uint256 amount = 2e18;
  
-         hevm.startPrank(address(user));
+        hevm.startPrank(address(user));
         // 1. Approve vault to spend impersonated account tokens.
         sgx.approve(address(vault), amount);
 
         // 2. Try to create vault. Fails because user doesn't have enough tokens.
         vault.createVault(address(sgx), amount);
+
+        hevm.stopPrank();
+    }
+
+    function testFailCreateVaultStopInEmergency() public {
+        vault.setCircuitBreaker(true);
+        
+        address user = address(0x0ABCD);
+        uint256 deposit = 2e18;
+ 
+        // 1. Mint token to account.
+        sgx.mint(address(user), 10e18);
+
+        // 2. Approve vault to spend impersonated account tokens.
+        hevm.startPrank(address(user));
+        sgx.approve(address(vault), 10e18);
+
+        // 3. Create vault. 
+        vault.createVault(address(sgx), deposit);
 
         hevm.stopPrank();
     }

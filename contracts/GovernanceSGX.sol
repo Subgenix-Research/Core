@@ -76,8 +76,7 @@ contract GovernanceSGX is ERC20, Ownable {
         emit Deposit(msg.sender, amount);
 
         // Lock the SGX in the contract
-        bool success = sgx.transferFrom(msg.sender, address(this), amount);
-        if (!success) { revert TransferFrom(); }
+        sgx.transferFrom(msg.sender, address(this), amount);
     }
 
     /// @notice Unlocks the staked + gained SGX and burns gSGX.
@@ -104,8 +103,7 @@ contract GovernanceSGX is ERC20, Ownable {
         emit Withdraw(msg.sender, amount, share);
 
         // Transfer user's SGX.
-        bool success = sgx.transfer(msg.sender, amount);
-        if (!success) { revert ErrorTransfer(); }
+        sgx.transfer(msg.sender, amount);
     }
 
     /// @notice Updates the withdraw ceil value.
