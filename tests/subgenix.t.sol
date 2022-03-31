@@ -529,6 +529,7 @@ contract SubgenixTest is DSTestPlus {
     }
 
     function testFailSetManagerNotOwner(address user) public {
+        hevm.assume(user != token.owner());
 
         hevm.prank(user);
         token.setManager(user, true);
