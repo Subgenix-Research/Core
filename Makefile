@@ -1,14 +1,11 @@
 build:
-	forge build && \
-	npx hardhat compile
+	forge build
 
 clean:
-	forge clean && \
-	npx hardhat clean
+	forge clean
 
 test:
 	forge test
 
 snap:
 	forge snapshot
-

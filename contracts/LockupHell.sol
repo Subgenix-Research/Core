@@ -107,7 +107,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
     // vaultFactory contract address.
     address internal vaultFactory;
 
-
     // Global rates.
     Rates public rates;
     
