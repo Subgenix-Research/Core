@@ -537,6 +537,8 @@ contract SubgenixTest is DSTestPlus {
 
     function testFailTransferWhenPaused(address user, address to) public {
         token.pauseContract(true);
+
+        hevm.assume(user != token.owner());
         
         token.mint(address(user), 1e18);
 
@@ -546,6 +548,8 @@ contract SubgenixTest is DSTestPlus {
 
     function testFailTransferFromWhenPaused(address from, address to) public {
         token.pauseContract(true);
+
+        hevm.assume(from != token.owner());
 
         token.mint(from, 1e18);
 

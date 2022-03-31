@@ -122,11 +122,12 @@ contract LockUpHellTest is DSTestPlus {
         
         sgx.mint(address(vault), depositAmount);
 
-        hevm.prank(address(vault));
+        hevm.startPrank(address(vault));
         sgx.approve(address(lockup), depositAmount);
-        
-        hevm.prank(address(vault)); // Impersonate vaultFactory
+    
         lockup.lockupRewards(address(user), shortRewards, longRewards);
+
+        hevm.stopPrank();
 
         hevm.startPrank(address(user)); // Impersonate user
 
@@ -139,7 +140,6 @@ contract LockUpHellTest is DSTestPlus {
 
         LockupType memory userLockup;
         
-        hevm.prank(address(user)); // Impersonate user
         lockup.claimShortLockup(address(user), index);
 
         // Get lockup Info
