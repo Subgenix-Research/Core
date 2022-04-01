@@ -541,8 +541,6 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @param swapAmount uint256, the amount of SGX we are making the swap.
     function swapSGXforAVAX(uint256 swapAmount) private {
 
-        Isgx(sgx).approve(address(joeRouter), swapAmount);
-
         address[] memory path;
         path = new address[](2);
         path[0] = address(sgx);
@@ -550,7 +548,8 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
         uint256 toTreasury = mulDivDown(swapAmount, 75e16, SCALE);
         uint256 toResearch = swapAmount - toTreasury;
-        
+
+        Isgx(sgx).approve(address(joeRouter), swapAmount);
         joeRouter.swapExactTokensForAVAX(toTreasury, 0, path, treasury, block.timestamp);
         joeRouter.swapExactTokensForAVAX(toResearch, 0, path, research, block.timestamp);
     }
