@@ -24,10 +24,14 @@ contract GSGXTest is DSTestPlus {
                               UNIT-TESTS 
     //////////////////////////////////////////////////////////////*/
 
-    function testDeposit() public {
-        address user = address(0xABCD);
-        uint256 deposit = 2e18;
-        sgx.mint(user, 10e18);
+    function testDeposit(
+        address user, 
+        uint256 mintAmount, 
+        uint256 deposit
+    ) public {
+        
+        hevm.assume(deposit < mintAmount);
+        sgx.mint(user, mintAmount);
 
         uint256 balanceBefore = sgx.balanceOf(user);
 
@@ -40,71 +44,77 @@ contract GSGXTest is DSTestPlus {
         assertEq(sgx.balanceOf(user), balanceBefore - deposit);
     }
 
-    function testWithdraw() public {
-        address user = address(0xABCD);
-        uint256 deposit = 2e18;
+    function testWithdraw(address user, uint256 deposit) public {
 
-        sgx.mint(user, 10e18);
+        hevm.assume(deposit > 0 && deposit < gsgx.withdrawCeil());
+        sgx.mint(user, deposit);
 
         hevm.startPrank(user);
         sgx.approve(address(gsgx), deposit);
         gsgx.deposit(user, deposit);
 
-        uint256 balanceAfter = sgx.balanceOf(user);
-
         gsgx.withdraw(deposit);
         hevm.stopPrank();
 
-        assertEq(sgx.balanceOf(user), balanceAfter + deposit);
+        assertEq(sgx.balanceOf(user), deposit);
         assertEq(gsgx.balanceOf(user), 0);
-
     }
 
-    function testSetWithdrawCeil() public {
-        
-        gsgx.setWithdrawCeil(100e18);
+    function testSetWithdrawCeil(uint256 amount) public {
 
-        assertEq(gsgx.withdrawCeil(), 100e18);
+        gsgx.setWithdrawCeil(amount);
+
+        assertEq(gsgx.withdrawCeil(), amount);
     }
 
     // <----------------------------------------------------> //
     // <-------------------- TEST  FAIL --------------------> //
     // <----------------------------------------------------> //
 
-    function testFailDepositNotApproved() public {
-        sgx.mint(msg.sender, 10e18);
-        gsgx.deposit(msg.sender, 2e18);
+    function testFailDepositNotApproved(address user, uint256 amount) public {
+        hevm.assume(amount > 0);
+        sgx.mint(user, amount);
+        gsgx.deposit(user, amount);
     }
 
-    function testFailDepositNotEnoughFunds() public {
-        address user = address(0xABCD);
+    function testFailDepositNotEnoughFunds(address user, uint256 amount) public {
+        hevm.assume(amount > 0);
 
         hevm.startPrank(user);
-        sgx.approve(address(gsgx), 10e18);
-        gsgx.deposit(msg.sender, 10e18);
+        sgx.approve(address(gsgx), amount);
+        gsgx.deposit(msg.sender, amount);
         hevm.stopPrank();
 
     }
 
-    function testFailWithdrawAmountTooBig() public {
-        address user = address(0xABCD);
-        sgx.mint(user, 10e18);
+    function testFailWithdrawAmountTooBig(
+        address user,
+        uint256 mintAmount,
+        uint256 withdrawAmount 
+    ) public {
+        hevm.assume(mintAmount < withdrawAmount);
+        sgx.mint(user, mintAmount);
 
         hevm.startPrank(user);
-        sgx.approve(address(gsgx), 2e18);
-        gsgx.deposit(user, 2e18);
+        sgx.approve(address(gsgx), mintAmount);
+        gsgx.deposit(user, mintAmount);
 
-        gsgx.withdraw(20e18);
+        gsgx.withdraw(withdrawAmount);
         
         hevm.stopPrank();
     }
     
-    function testFailWithdrawHittingWithdrawCeiling() public {
-        address user = address(0xABCD);
-        gsgx.setWithdrawCeil(1e18);
+    function testFailWithdrawHittingWithdrawCeiling(
+        address user,
+        uint256 withdrawCeiling,
+        uint256 mintAmount,
+        uint256 deposit
 
-        uint256 deposit = 2e18;
-        sgx.mint(user, 10e18);
+    ) public {
+        hevm.assume(withdrawCeiling < deposit);
+        gsgx.setWithdrawCeil(withdrawCeiling);
+
+        sgx.mint(user, mintAmount);
 
         hevm.startPrank(user);
         sgx.approve(address(gsgx), deposit);

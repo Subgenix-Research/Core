@@ -25,18 +25,6 @@ contract Subgenix is ERC20, Ownable {
 
     /// @notice Indicates if transactions are allowed or not.
     bool public paused;
-
-    modifier onlyManagers() {
-        if (!managers[msg.sender]) revert Unauthorized();
-        _;
-    }
-
-    modifier whenPaused() {
-        if (paused) {
-            if (!managers[msg.sender]) revert Paused();
-        }
-        _;
-    }
     
     // <--------------------------------------------------------> //
     // <---------------------- CONSTRUCTOR ---------------------> //
@@ -47,6 +35,7 @@ contract Subgenix is ERC20, Ownable {
         string memory _symbol,
         uint8 _decimals
     ) ERC20(_name, _symbol, _decimals) {
+
         managers[msg.sender] = true;
     }
 
@@ -56,7 +45,8 @@ contract Subgenix is ERC20, Ownable {
 
     /// @notice Implementation of the mint function from the ERC20.
     /// @dev See {ERC20 _mint}. Only managers can call it.
-    function mint(address to, uint256 amount) external onlyManagers {
+    function mint(address to, uint256 amount) external {
+        if (!managers[msg.sender]) revert Unauthorized();
         _mint(to, amount);
     }
     
@@ -75,11 +65,15 @@ contract Subgenix is ERC20, Ownable {
         _burn(from, amount);
     }
 
-    function transfer(address to, uint256 amount) public override whenPaused returns (bool) {
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        if (paused && !managers[msg.sender]) revert Paused();
+        
         return super.transfer(to, amount);
     }
 
-    function transferFrom(address from, address to, uint256 amount) public override whenPaused returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
+        if (paused && !managers[msg.sender]) revert Paused();
+
         return super.transferFrom(from, to, amount);
     }
 
@@ -90,11 +84,11 @@ contract Subgenix is ERC20, Ownable {
     /// @notice Add/remove an address from having access to functions with 
     ///         the `onlyManagers` modifier.
     /// @param user address, Contract/User to be added/removed from the managers mapping.
-    /// @param amount bool, true to add permission, false to remove permission.
-    function setManager(address user, bool amount) external onlyOwner {
-        managers[user] = amount;
+    /// @param action bool, true to add permission, false to remove permission.
+    function setManager(address user, bool action) external onlyOwner {
+        managers[user] = action;
 
-        emit ManagerSet(user, amount);
+        emit ManagerSet(user, action);
     }
 
     function pauseContract(bool action) external onlyOwner {

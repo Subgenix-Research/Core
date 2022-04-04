@@ -23,6 +23,4 @@ library Helper {
             z := div(z, denominator)
         }
     }
-
-
 }

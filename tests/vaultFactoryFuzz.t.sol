@@ -82,7 +82,6 @@ contract VaultFactoryTest is DSTestPlus {
  
         // 1. Mint token to account.
         sgx.mint(user, mintAmount);
-        uint256 balanceBefore = sgx.balanceOf(user);
 
         // 2. Impersonate user and approve this address to 
         //    spend his tokens.
@@ -106,7 +105,7 @@ contract VaultFactoryTest is DSTestPlus {
         assertTrue(league == vault.getVaultLeague(deposit));
         assertEq(vault.totalNetworkVaults(), 1);
         assertEq(sgx.balanceOf(treasury), deposit);
-        assertEq(sgx.balanceOf(user), balanceBefore - deposit);
+        //assertEq(sgx.balanceOf(user), balanceBefore - deposit);
 
         hevm.stopPrank();
     }
@@ -583,13 +582,15 @@ contract VaultFactoryTest is DSTestPlus {
         uint256 gSGXDistributed = reward.mulDivDown(vault.gSGXDistributed(), 1e18);
         uint256 gSGXPercentage = reward.mulDivDown(vault.gSGXPercent(), 1e18);
 
+        uint256 percentageReceived = balance.mulDivDown(vault.liquidateVaultPercent(), 1e18);
+
         reward -= burnAmount;
         reward -= lockup7;
         reward -= lockup18;
         reward -= gSGXDistributed;
         reward -= gSGXPercentage;
         
-        uint256 result = (mintAmount - deposit) + reward;
+        uint256 result = (mintAmount - deposit) + reward + percentageReceived;
         
         // Approve
         sgx.approve(address(lockup), lockup7+lockup18);
@@ -626,19 +627,19 @@ contract VaultFactoryTest is DSTestPlus {
 
         uint256 mintAmount = 100000000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
-
         uint256 balance;
 
         // 1. Mint token to account.
-        sgx.mint(address(user), mintAmount);
+        sgx.mint(user, mintAmount);
 
+        hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
-        hevm.startPrank(address(user), address(user));
-        sgx.approve(address(vault), mintAmount);
+        sgx.approve(address(vault), type(uint256).max);
          
+        // 3. Impersonate user
         vault.createVault(address(sgx), deposit);
-
-        ( , , , balance, , ) = vault.usersVault(address(user));
+        
+        ( , , , balance, , ) = vault.usersVault(user);
 
         // *---- Jump in time and claim rewards ----* //
 
@@ -663,9 +664,9 @@ contract VaultFactoryTest is DSTestPlus {
         // Approve
         sgx.approve(address(lockup), lockup7+lockup18);
         
-        vault.claimRewards(address(user));
+        vault.claimRewards(user);
         
-        assertEq(sgx.balanceOf(address(user)), result);
+        assertEq(sgx.balanceOf(user), result);
         hevm.stopPrank();
     }
 
@@ -708,12 +709,9 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailClaimRewardsNotUser(address user, uint256 deposit) public {
 
-        emit log_address(user);
-        emit log_address(msg.sender);
-        emit log_address(vault.owner());
-
         uint256 mintAmount = 100000000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
+        hevm.assume(user != vault.owner());
 
         // 1. Mint token to account.
         sgx.mint(user, mintAmount);
@@ -726,9 +724,6 @@ contract VaultFactoryTest is DSTestPlus {
 
         // Jump 1 day into the future
         hevm.warp(block.timestamp + 365 days); // Should receive 10% rewards.
-
-        // Approve
-        //sgx.approve(address(lockup), deposit);
 
         hevm.stopPrank();
 
