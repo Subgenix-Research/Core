@@ -573,24 +573,16 @@ contract VaultFactoryTest is DSTestPlus {
         // Jump 1 day into the future
         hevm.warp(block.timestamp + 365 days); // Should receive 700% rewards.
 
-        vault.liquidateVault(user);
-
-        uint256 reward = 7e18; // 700%
-        uint256 burnAmount = reward.mulDivDown(vault.burnPercent(), 1e18); 
-        uint256 lockup7    = reward.mulDivDown(lockup.getShortPercentage(), 1e18); 
-        uint256 lockup18   = reward.mulDivDown(lockup.getLongPercentage(), 1e18); 
-        uint256 gSGXDistributed = reward.mulDivDown(vault.gSGXDistributed(), 1e18);
-        uint256 gSGXPercentage = reward.mulDivDown(vault.gSGXPercent(), 1e18);
+        (uint256 reward,
+         uint256 lockup7, 
+         uint256 lockup18
+        ) = vault.viewPendingRewards(user);
 
         uint256 percentageReceived = balance.mulDivDown(vault.liquidateVaultPercent(), 1e18);
 
-        reward -= burnAmount;
-        reward -= lockup7;
-        reward -= lockup18;
-        reward -= gSGXDistributed;
-        reward -= gSGXPercentage;
-        
         uint256 result = (mintAmount - deposit) + reward + percentageReceived;
+
+        vault.liquidateVault(user);
         
         // Approve
         sgx.approve(address(lockup), lockup7+lockup18);
@@ -646,18 +638,10 @@ contract VaultFactoryTest is DSTestPlus {
         // Jump 1 day into the future
         hevm.warp(block.timestamp + 365 days); // Should receive 700% rewards.
 
-        uint256 reward = 7e18; // 700%
-        uint256 burnAmount = reward.mulDivDown(vault.burnPercent(), 1e18); 
-        uint256 lockup7    = reward.mulDivDown(lockup.getShortPercentage(), 1e18); 
-        uint256 lockup18   = reward.mulDivDown(lockup.getLongPercentage(), 1e18); 
-        uint256 gSGXDistributed = reward.mulDivDown(vault.gSGXDistributed(), 1e18);
-        uint256 gSGXPercentage = reward.mulDivDown(vault.gSGXPercent(), 1e18);
-
-        reward -= burnAmount;
-        reward -= lockup7;
-        reward -= lockup18;
-        reward -= gSGXDistributed;
-        reward -= gSGXPercentage;
+        (uint256 reward,
+         uint256 lockup7, 
+         uint256 lockup18
+        ) = vault.viewPendingRewards(user);
         
         uint256 result = (mintAmount - deposit) + reward;
         
