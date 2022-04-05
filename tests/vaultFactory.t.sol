@@ -80,7 +80,7 @@ contract VaultFactoryTest is DSTestPlus {
         VaultFactory.VaultLeague league;
  
         // 1. Mint token to account.
-        sgx.mint(address(user), 10e18);
+        sgx.transfer(address(user), 10e18);
         uint256 balanceBefore = sgx.balanceOf(address(user));
 
         // 2. Impersonate user and approve this address to 
@@ -163,7 +163,7 @@ contract VaultFactoryTest is DSTestPlus {
         VaultFactory.VaultLeague league;
  
         // 1. Mint token to account.
-        sgx.mint(address(user), 10e18);
+        sgx.transfer(address(user), 10e18);
         uint256 balanceBefore = sgx.balanceOf(address(user));
 
         // 2. Impersonate user and approve this address to 
@@ -329,7 +329,7 @@ contract VaultFactoryTest is DSTestPlus {
     function testDepositInVault() public {
         address user = address(0x0ABCD);
 
-        uint256 mintAmount = 10e18;
+        uint256 transferAmount = 10e18;
         uint256 deposit = 2e18;
         uint256 firstBalance;
 
@@ -338,7 +338,7 @@ contract VaultFactoryTest is DSTestPlus {
         VaultFactory.VaultLeague league;
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        sgx.transfer(user, transferAmount);
         uint256 balanceBefore = sgx.balanceOf(user);
 
         hevm.startPrank(user);
@@ -418,7 +418,7 @@ contract VaultFactoryTest is DSTestPlus {
         uint256 interestLength;
 
         // 1. Mint token to account.
-        sgx.mint(user, amount);
+        sgx.transfer(user, amount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
@@ -555,18 +555,18 @@ contract VaultFactoryTest is DSTestPlus {
     // <--------------------------------------------------------> // 
     function testLiquidateVault() public {
         address user = address(0x0ABCD);
-        uint256 mintAmount = 10e18;
+        uint256 transferAmount = 10e18;
         uint256 deposit = 1e18;
         
         uint256 balance;
         bool exists;
  
         // 1. Mint token to account.
-        sgx.mint(address(user), mintAmount);
+        sgx.transfer(address(user), transferAmount);
 
         hevm.startPrank(address(user));
         // 2. Approve this address to spend impersonated account tokens.
-        sgx.approve(address(vault), mintAmount);
+        sgx.approve(address(vault), transferAmount);
 
         // 3. Create Vault.
         vault.createVault(address(sgx), deposit);
@@ -593,7 +593,7 @@ contract VaultFactoryTest is DSTestPlus {
         // Total of user balanace immediately sent to the user.
         uint256 sgxPercent = balance.mulDivDown(vault.liquidateVaultPercent(), 1e18);
 
-        uint256 result = (mintAmount - deposit) + reward + sgxPercent;
+        uint256 result = (transferAmount - deposit) + reward + sgxPercent;
 
         (exists, , , , , ) = vault.usersVault(address(user));
 
@@ -640,7 +640,7 @@ contract VaultFactoryTest is DSTestPlus {
         uint256 balance;
 
         // 1. Mint token to account.
-        sgx.mint(address(user), amount);
+        sgx.transfer(user, amount);
 
         // 2. Approve this address to spend impersonated account tokens.
         hevm.startPrank(address(user), address(user));
@@ -687,7 +687,7 @@ contract VaultFactoryTest is DSTestPlus {
         uint256 balance;
 
         // 1. Mint token to account.
-        sgx.mint(user, amount);
+        sgx.transfer(user, amount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.

@@ -36,7 +36,10 @@ contract Subgenix is ERC20, Ownable {
         uint8 _decimals
     ) ERC20(_name, _symbol, _decimals) {
 
-        managers[msg.sender] = true;
+        //managers[msg.sender] = true;
+        
+        // Mint inital supply
+        _mint(msg.sender, 6_000_000e18);
     }
 
     // <--------------------------------------------------------> //

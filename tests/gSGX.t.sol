@@ -27,7 +27,8 @@ contract GSGXTest is DSTestPlus {
     function testDeposit() public {
         address user = address(0xABCD);
         uint256 deposit = 2e18;
-        sgx.mint(user, 10e18);
+        
+        sgx.transfer(user, 10e18);
 
         uint256 balanceBefore = sgx.balanceOf(user);
 
@@ -44,7 +45,7 @@ contract GSGXTest is DSTestPlus {
         address user = address(0xABCD);
         uint256 deposit = 2e18;
 
-        sgx.mint(user, 10e18);
+        sgx.transfer(user, 10e18);
 
         hevm.startPrank(user);
         sgx.approve(address(gsgx), deposit);
@@ -72,7 +73,6 @@ contract GSGXTest is DSTestPlus {
     // <----------------------------------------------------> //
 
     function testFailDepositNotApproved() public {
-        sgx.mint(msg.sender, 10e18);
         gsgx.deposit(msg.sender, 2e18);
     }
 
@@ -83,12 +83,12 @@ contract GSGXTest is DSTestPlus {
         sgx.approve(address(gsgx), 10e18);
         gsgx.deposit(msg.sender, 10e18);
         hevm.stopPrank();
-
     }
 
     function testFailWithdrawAmountTooBig() public {
         address user = address(0xABCD);
-        sgx.mint(user, 10e18);
+        
+        sgx.transfer(user, 10e18);
 
         hevm.startPrank(user);
         sgx.approve(address(gsgx), 2e18);
@@ -104,7 +104,7 @@ contract GSGXTest is DSTestPlus {
         gsgx.setWithdrawCeil(1e18);
 
         uint256 deposit = 2e18;
-        sgx.mint(user, 10e18);
+        sgx.transfer(user, 10e18);
 
         hevm.startPrank(user);
         sgx.approve(address(gsgx), deposit);

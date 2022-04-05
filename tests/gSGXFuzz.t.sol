@@ -25,13 +25,15 @@ contract GSGXTest is DSTestPlus {
     //////////////////////////////////////////////////////////////*/
 
     function testDeposit(
-        address user, 
-        uint256 mintAmount, 
+        address user,
         uint256 deposit
     ) public {
+
+        uint256 transferAmount = 6_000_000e18;
         
-        hevm.assume(deposit < mintAmount);
-        sgx.mint(user, mintAmount);
+        hevm.assume(deposit < transferAmount);
+        
+        sgx.transfer(user, transferAmount);
 
         uint256 balanceBefore = sgx.balanceOf(user);
 
@@ -47,7 +49,8 @@ contract GSGXTest is DSTestPlus {
     function testWithdraw(address user, uint256 deposit) public {
 
         hevm.assume(deposit > 0 && deposit < gsgx.withdrawCeil());
-        sgx.mint(user, deposit);
+        
+        sgx.transfer(user, deposit);
 
         hevm.startPrank(user);
         sgx.approve(address(gsgx), deposit);
@@ -73,12 +76,11 @@ contract GSGXTest is DSTestPlus {
 
     function testFailDepositNotApproved(address user, uint256 amount) public {
         hevm.assume(amount > 0);
-        sgx.mint(user, amount);
         gsgx.deposit(user, amount);
     }
 
     function testFailDepositNotEnoughFunds(address user, uint256 amount) public {
-        hevm.assume(amount > 0);
+        hevm.assume(amount > 0 && user != msg.sender);
 
         hevm.startPrank(user);
         sgx.approve(address(gsgx), amount);
@@ -87,17 +89,14 @@ contract GSGXTest is DSTestPlus {
 
     }
 
-    function testFailWithdrawAmountTooBig(
-        address user,
-        uint256 mintAmount,
-        uint256 withdrawAmount 
-    ) public {
-        hevm.assume(mintAmount < withdrawAmount);
-        sgx.mint(user, mintAmount);
+    function testFailWithdrawAmountTooBig(address user, uint256 withdrawAmount) public {
+        uint256 transferAmount = 6_000_000e18;
+        hevm.assume(withdrawAmount > transferAmount);
+        sgx.transfer(user, transferAmount);
 
         hevm.startPrank(user);
-        sgx.approve(address(gsgx), mintAmount);
-        gsgx.deposit(user, mintAmount);
+        sgx.approve(address(gsgx), transferAmount);
+        gsgx.deposit(user, transferAmount);
 
         gsgx.withdraw(withdrawAmount);
         
@@ -107,14 +106,13 @@ contract GSGXTest is DSTestPlus {
     function testFailWithdrawHittingWithdrawCeiling(
         address user,
         uint256 withdrawCeiling,
-        uint256 mintAmount,
         uint256 deposit
-
     ) public {
-        hevm.assume(withdrawCeiling < deposit);
+        uint256 transferAmount = 6_000_000e18;
+        hevm.assume(deposit > withdrawCeiling && transferAmount > deposit);
         gsgx.setWithdrawCeil(withdrawCeiling);
 
-        sgx.mint(user, mintAmount);
+        sgx.transfer(user, deposit);
 
         hevm.startPrank(user);
         sgx.approve(address(gsgx), deposit);

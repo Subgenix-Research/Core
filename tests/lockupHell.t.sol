@@ -22,12 +22,12 @@ contract LockUpHellTest is DSTestPlus {
     uint256 internal longRewards = 5e18;
 
     struct LockupType {
-        bool longRewardsColected;  // True if user colected long rewards, false otherwise.
-        bool shortRewardsColected; // True if user colected short rewards, false otherwise.
-        uint32 longLockupPeriod;   // Time (in Unit time stamp) in the future when long lockup rewards will be unlocked.
-        uint32 shortLockupPeriod;  // Time (in Unit time stamp) in the future when short lockup rewards will be unlocked.
-        uint256 longRewards;       // The amount of rewards available to the user after longLockupPeriod.
-        uint256 shortRewards;      // The amount of rewards available to the user after shortLockupPeriod.
+        bool longRewardsCollected;     // True if user collected long rewards, false otherwise.
+        bool shortRewardsCollected;    // True if user collected short rewards, false otherwise.
+        uint32 longLockupUnlockDate;   // Time (in Unit time stamp) when long lockup rewards will be unlocked.
+        uint32 shortLockupUnlockDate;  // Time (in Unit time stamp) when short lockup rewards will be unlocked.
+        uint256 longRewards;           // The amount of rewards available to the user after longLockupUnlockDate.
+        uint256 shortRewards;          // The amount of rewards available to the user after shortLockupUnlockDate.
     }
     
     function setUp() public {
@@ -72,7 +72,7 @@ contract LockUpHellTest is DSTestPlus {
         address user = address(0x0ABCD);
         uint256 depositAmount = 10e18;
 
-        sgx.mint(address(vault), depositAmount);
+        sgx.transfer(address(vault), depositAmount);
 
         hevm.prank(address(vault));
         sgx.approve(address(lockup), depositAmount);
@@ -93,21 +93,21 @@ contract LockUpHellTest is DSTestPlus {
         
         // Get lockup Info
         // solhint-disable-next-line
-        (userLockup.longRewardsColected, 
-         userLockup.shortRewardsColected, 
-         userLockup.longLockupPeriod,
-         userLockup.shortLockupPeriod,
+        (userLockup.longRewardsCollected, 
+         userLockup.shortRewardsCollected, 
+         userLockup.longLockupUnlockDate,
+         userLockup.shortLockupUnlockDate,
          userLockup.longRewards,
          userLockup.shortRewards) = lockup.usersLockup(address(user), index);
 
         // Assert User has not colected longRewards yet.
-        assertTrue(!userLockup.longRewardsColected);
+        assertTrue(!userLockup.longRewardsCollected);
         // Assert User has not colected shortRewards yet.
-        assertTrue(!userLockup.shortRewardsColected);
-        // Assert longLockupPeriod is equal to what we set it to be.
-        assertEq(userLockup.longLockupPeriod, lockup.getLongLockupTime());
-        // Assert shortLockupPeriod is equal to what we set it to be.
-        assertEq(userLockup.shortLockupPeriod, lockup.getShortLockupTime());
+        assertTrue(!userLockup.shortRewardsCollected);
+        // Assert longLockupUnlockDate is equal to what we set it to be.
+        assertEq(userLockup.longLockupUnlockDate, lockup.getLongLockupTime());
+        // Assert shortLockupUnlockDate is equal to what we set it to be.
+        assertEq(userLockup.shortLockupUnlockDate, lockup.getShortLockupTime());
         // Assert shortRewards are equal to what we set it to be.
         assertEq(userLockup.shortRewards, shortRewards);
         // Assert longtRewards are equal to what we set it to be.
@@ -120,7 +120,7 @@ contract LockUpHellTest is DSTestPlus {
         address user = address(0x0ABCD);
         uint256 depositAmount = 10e18;
         
-        sgx.mint(address(vault), depositAmount);
+        sgx.transfer(address(vault), depositAmount);
 
         hevm.startPrank(address(vault));
         sgx.approve(address(lockup), depositAmount);
@@ -140,18 +140,18 @@ contract LockUpHellTest is DSTestPlus {
 
         LockupType memory userLockup;
         
-        lockup.claimShortLockup(address(user), index);
+        lockup.claimShortLockup(index);
 
         // Get lockup Info
         // solhint-disable-next-line
         ( , 
-         userLockup.shortRewardsColected, 
+         userLockup.shortRewardsCollected, 
           ,
           ,
           ,
          userLockup.shortRewards) = lockup.usersLockup(address(user), index);
 
-        assertTrue(userLockup.shortRewardsColected);
+        assertTrue(userLockup.shortRewardsCollected);
         assertEq(userLockup.shortRewards, 0);
         assertEq(sgx.balanceOf(address(user)), (balanceBefore+shortRewards));
         balanceBefore = sgx.balanceOf(address(user));
@@ -163,7 +163,7 @@ contract LockUpHellTest is DSTestPlus {
         address user = address(0x0ABCD);
         uint256 depositAmount = 10e18;
         
-        sgx.mint(address(vault), depositAmount);
+        sgx.transfer(address(vault), depositAmount);
 
         hevm.prank(address(vault));
         sgx.approve(address(lockup), depositAmount);
@@ -182,18 +182,18 @@ contract LockUpHellTest is DSTestPlus {
 
         LockupType memory userLockup;
         
-        lockup.claimLongLockup(address(user), index);
+        lockup.claimLongLockup(index);
 
         // Get lockup Info
         // solhint-disable-next-line
-        (userLockup.longRewardsColected, 
+        (userLockup.longRewardsCollected, 
           , 
           ,
           ,
          userLockup.longRewards,
           ) = lockup.usersLockup(address(user), index);
 
-        assertTrue(userLockup.longRewardsColected);
+        assertTrue(userLockup.longRewardsCollected);
         assertEq(userLockup.longRewards, 0);
         assertEq(sgx.balanceOf(address(user)), (balanceBefore+longRewards));
 
@@ -268,7 +268,7 @@ contract LockUpHellTest is DSTestPlus {
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
         
-        lockup.claimShortLockup(msg.sender, 2);
+        lockup.claimShortLockup(2);
     }
 
     function testFailclaimShortLockupAlreadyClaimed() public {
@@ -282,10 +282,10 @@ contract LockUpHellTest is DSTestPlus {
         uint32 index = lockup.usersLockupLength(msg.sender);
         
         // Claim once.
-        lockup.claimShortLockup(msg.sender, index);
+        lockup.claimShortLockup(index);
 
         // Try to claim again.
-        lockup.claimShortLockup(msg.sender, index);
+        lockup.claimShortLockup(index);
     }
 
     function testFailclaimShortLockupTooEarly() public {
@@ -299,7 +299,7 @@ contract LockUpHellTest is DSTestPlus {
 
         uint32 index = lockup.usersLockupLength(msg.sender);
         
-        lockup.claimShortLockup(msg.sender, index);
+        lockup.claimShortLockup(index);
     }
 
     function testFailclaimLongLockupIndexInvalid() public {
@@ -310,7 +310,7 @@ contract LockUpHellTest is DSTestPlus {
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
         
-        lockup.claimLongLockup(msg.sender, 2);
+        lockup.claimLongLockup(2);
     }
 
     function testFailclaimLongLockupAlreadyClaimed() public {
@@ -324,10 +324,10 @@ contract LockUpHellTest is DSTestPlus {
         uint32 index = lockup.usersLockupLength(msg.sender);
         
         // Claim once.
-        lockup.claimLongLockup(msg.sender, index);
+        lockup.claimLongLockup(index);
 
         // Try to claim again.
-        lockup.claimLongLockup(msg.sender, index);
+        lockup.claimLongLockup(index);
     }
 
     function testFailclaimLongLockupTooEarly() public {
@@ -340,6 +340,6 @@ contract LockUpHellTest is DSTestPlus {
 
         uint32 index = lockup.usersLockupLength(msg.sender);
         
-        lockup.claimLongLockup(msg.sender, index);
+        lockup.claimLongLockup(index);
     }
 }

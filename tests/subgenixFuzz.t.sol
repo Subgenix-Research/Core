@@ -12,6 +12,7 @@ contract SubgenixTest is DSTestPlus {
     
     function setUp() public {
         token = new Subgenix("Subgenix Currency", "SGX", 18);
+        token.setManager(address(this), true);
     }
     
     /*///////////////////////////////////////////////////////////////
@@ -30,9 +31,13 @@ contract SubgenixTest is DSTestPlus {
     }
     
     function testMint(address from, uint256 amount) public {
+        hevm.assume(amount != 0);
+        hevm.assume(amount < token.balanceOf(address(this)));
+
+        hevm.prank(address(this));
         token.mint(from, amount);
 
-        assertEq(token.totalSupply(), amount);
+        assertEq(token.totalSupply(), (6_000_000e18 + amount));
         assertEq(token.balanceOf(from), amount);
     }
 
@@ -41,56 +46,64 @@ contract SubgenixTest is DSTestPlus {
         uint256 mintAmount,
         uint256 burnAmount
     ) public {
-        burnAmount = bound(burnAmount, 0, mintAmount);
+        hevm.assume(burnAmount < mintAmount);
+        hevm.assume(mintAmount != 0 && burnAmount != 0);
+        hevm.assume(mintAmount < token.balanceOf(address(this)));
 
+        hevm.prank(address(this));
         token.mint(from, mintAmount);
 
         hevm.prank(from);
         token.burn(burnAmount);
 
-        assertEq(token.totalSupply(), mintAmount - burnAmount);
+        assertEq(token.totalSupply(), (6_000_000e18 + mintAmount) - burnAmount);
         assertEq(token.balanceOf(from), mintAmount - burnAmount);
     }
 
+    function testBurnFrom(address user, uint256 burnAmount) public {
+        uint256 initSupply = token.balanceOf(address(this));
+        hevm.assume(burnAmount != 0);
+        hevm.assume(burnAmount < initSupply);
+
+        hevm.prank(address(this));
+        token.approve(user, burnAmount);
+
+        hevm.prank(user);
+        token.burnFrom(address(this), burnAmount);
+
+        assertEq(token.totalSupply(), initSupply - burnAmount);
+        assertEq(token.balanceOf(address(this)), initSupply - burnAmount);
+    }
+
     function testTransfer(address from, uint256 amount) public {
+        hevm.assume(from != address(this));
+        hevm.assume(amount != 0);
+        hevm.assume(amount < token.balanceOf(address(this)));
+        
+        hevm.prank(address(this));
         token.mint(address(this), amount);
 
         assertTrue(token.transfer(from, amount));
-        assertEq(token.totalSupply(), amount);
+        assertEq(token.totalSupply(), (6_000_000e18 + amount));
 
-        if (address(this) == from) {
-            assertEq(token.balanceOf(address(this)), amount);
-        } else {
-            assertEq(token.balanceOf(address(this)), 0);
-            assertEq(token.balanceOf(from), amount);
-        }
+        assertEq(token.balanceOf(address(this)), 6_000_000e18);
+        assertEq(token.balanceOf(from), amount);
     }
 
-    function testTransferFrom(
-        address to,
-        uint256 approval,
-        uint256 amount
-    ) public {
-        amount = bound(amount, 0, approval);
+    function testTransferFrom(address to, uint256 amount) public {
+        uint256 initSupply = token.balanceOf(address(this));
+        hevm.assume(amount != 0);
+        hevm.assume(amount < initSupply);
 
-        ERC20User from = new ERC20User(token);
+        hevm.prank(address(this));
+        token.approve(to, amount);
 
-        token.mint(address(from), amount);
+        hevm.prank(to);
+        token.transferFrom(address(this), to, amount);
 
-        from.approve(address(this), approval);
-
-        assertTrue(token.transferFrom(address(from), to, amount));
-        assertEq(token.totalSupply(), amount);
-
-        uint256 app = address(from) == address(this) || approval == type(uint256).max ? approval : approval - amount;
-        assertEq(token.allowance(address(from), address(this)), app);
-
-        if (address(from) == to) {
-            assertEq(token.balanceOf(address(from)), amount);
-        } else {
-            assertEq(token.balanceOf(address(from)), 0);
-            assertEq(token.balanceOf(to), amount);
-        }
+        assertEq(token.balanceOf(address(this)), initSupply - amount);
+        assertEq(token.allowance(address(this), to), 0);
+        assertEq(token.balanceOf(to), amount);
     }
 
     function testSetManager(address owner) public {
@@ -109,22 +122,17 @@ contract SubgenixTest is DSTestPlus {
         uint256 mintAmount,
         uint256 burnAmount
     ) public {
-        burnAmount = bound(burnAmount, mintAmount + 1, type(uint256).max);
+        hevm.assume(burnAmount > mintAmount);
 
+        hevm.prank(address(this));
         token.mint(to, mintAmount);
 
         hevm.prank(to);
         token.burn(burnAmount);
     }
 
-    function testFailTransferInsufficientBalance(
-        address to,
-        uint256 mintAmount,
-        uint256 sendAmount
-    ) public {
-        sendAmount = bound(sendAmount, mintAmount + 1, type(uint256).max);
-
-        token.mint(address(this), mintAmount);
+    function testFailTransferInsufficientBalance(address to, uint256 sendAmount) public {
+        hevm.assume(sendAmount > token.balanceOf(address(this)));
         token.transfer(to, sendAmount);
     }
 
@@ -133,10 +141,11 @@ contract SubgenixTest is DSTestPlus {
         uint256 approval,
         uint256 amount
     ) public {
-        amount = bound(amount, approval + 1, type(uint256).max);
+        hevm.assume(amount > approval);
 
         ERC20User from = new ERC20User(token);
 
+        hevm.prank(address(this));
         token.mint(address(from), amount);
         from.approve(address(this), approval);
         token.transferFrom(address(from), to, amount);
@@ -147,17 +156,18 @@ contract SubgenixTest is DSTestPlus {
         uint256 mintAmount,
         uint256 sendAmount
     ) public {
-        sendAmount = bound(sendAmount, mintAmount + 1, type(uint256).max);
+        hevm.assume(sendAmount > mintAmount);
 
         ERC20User from = new ERC20User(token);
 
+        hevm.prank(address(this));
         token.mint(address(from), mintAmount);
         from.approve(address(this), sendAmount);
         token.transferFrom(address(from), to, sendAmount);
     }
 
     function testFailSetManagerNotOwner(address user) public {
-        hevm.assume(user != token.owner());
+        hevm.assume(user != address(this));
 
         hevm.prank(user);
         token.setManager(user, true);
@@ -166,7 +176,7 @@ contract SubgenixTest is DSTestPlus {
     function testFailTransferWhenPaused(address user, address to) public {
         token.pauseContract(true);
 
-        hevm.assume(user != token.owner());
+        hevm.assume(user != address(this));
         
         token.mint(address(user), 1e18);
 
@@ -177,7 +187,7 @@ contract SubgenixTest is DSTestPlus {
     function testFailTransferFromWhenPaused(address from, address to) public {
         token.pauseContract(true);
 
-        hevm.assume(from != token.owner());
+        hevm.assume(from != address(this));
 
         token.mint(from, 1e18);
 

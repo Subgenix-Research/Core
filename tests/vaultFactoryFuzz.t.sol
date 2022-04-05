@@ -28,6 +28,7 @@ contract VaultFactoryTest is DSTestPlus {
         wavax = new MockWAVAX();
 
         sgx = new Subgenix("Subgenix Currency", "SGX", 18);
+        sgx.setManager(address(this), true);
         
         lockup = new LockupHell(address(sgx));
         
@@ -70,7 +71,7 @@ contract VaultFactoryTest is DSTestPlus {
     // <--------------------------------------------------------> // 
     function testCreateVault(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
 
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
@@ -81,7 +82,8 @@ contract VaultFactoryTest is DSTestPlus {
         VaultFactory.VaultLeague league;
  
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        hevm.prank(address(this));
+        sgx.transfer(user, mintAmount);
 
         // 2. Impersonate user and approve this address to 
         //    spend his tokens.
@@ -112,7 +114,7 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testCreateVaultWithWAVAX(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
 
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
@@ -155,7 +157,7 @@ contract VaultFactoryTest is DSTestPlus {
     function testCreateVaultInLiquidityPhase(address user, uint256 deposit) public {
         vault.setLiquidityAccumulationPhase(true);
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
 
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
@@ -166,7 +168,8 @@ contract VaultFactoryTest is DSTestPlus {
         VaultFactory.VaultLeague league;
  
         // 1. Mint token to account.
-        sgx.mint(address(user), mintAmount);
+        hevm.prank(address(this));
+        sgx.transfer(address(user), mintAmount);
         uint256 balanceBefore = sgx.balanceOf(address(user));
 
         // 2. Impersonate user and approve this address to 
@@ -199,7 +202,7 @@ contract VaultFactoryTest is DSTestPlus {
     function testCreateVaultInLiquidityPhaseWithWAVAX(address user, uint256 deposit) public {
         vault.setLiquidityAccumulationPhase(true);
         
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
 
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
@@ -241,11 +244,11 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailCreateVaultAlreadyHasOne(address user, uint256 deposit) public {
         
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
         // 1. Mint token to account.
-        sgx.mint(address(user), 10e18);
+        sgx.transfer(address(user), 10e18);
 
         // 2. Approve vault to spend impersonated account tokens.
         hevm.startPrank(address(user));
@@ -261,12 +264,12 @@ contract VaultFactoryTest is DSTestPlus {
     }
     function testFailCreateVaultAmountTooSmall(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit < vault.minVaultDeposit() && deposit < mintAmount);
 
  
         // 1. Mint token to account.
-        sgx.mint(address(user), 10e18);
+        sgx.transfer(address(user), 10e18);
 
         // 2. Approve vault to spend impersonated account tokens.
         hevm.startPrank(address(user));
@@ -280,11 +283,11 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailCreateVaultTokenNotAccepted(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
  
         // 1. Mint token to account.
-        sgx.mint(address(user), 10e18);
+        sgx.transfer(address(user), 10e18);
 
         // 2. Approve vault to spend impersonated account tokens.
         hevm.startPrank(address(user));
@@ -332,7 +335,7 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testDepositInVault(address user, uint256 deposit) public {
         
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < (mintAmount/2));
         
         uint256 firstBalance;
@@ -341,7 +344,8 @@ contract VaultFactoryTest is DSTestPlus {
         VaultFactory.VaultLeague league;
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        hevm.prank(address(this));
+        sgx.transfer(user, mintAmount);
         uint256 balanceBefore = sgx.balanceOf(user);
 
         hevm.startPrank(user);
@@ -374,7 +378,7 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testDepositInVaultWithWAVAX(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < (mintAmount/2));
 
         uint256 firstBalance;
@@ -413,13 +417,14 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testDepositInVaultWithInterestChange(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < (mintAmount/2));
 
         uint256 interestLength;
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        hevm.prank(address(this));
+        sgx.transfer(user, mintAmount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
@@ -449,11 +454,11 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailDepositInVaultDoesntHaveVault(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        sgx.transfer(user, mintAmount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
@@ -466,11 +471,11 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailDepositInVaultAmountTooSmall(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit < vault.minVaultDeposit() && deposit < mintAmount);
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        sgx.transfer(user, mintAmount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
@@ -486,11 +491,11 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailDepositInVaultTokenNotAccepted(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        sgx.transfer(user, mintAmount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
@@ -505,11 +510,11 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailDepositInVaultStopInEmergency(address user, uint256 deposit) public {
         
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        sgx.transfer(user, mintAmount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
@@ -529,11 +534,11 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailDepositInVaultTransferFromUnderflow(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
         // 1. Mint token to account.
-        sgx.mint(user, deposit);
+        sgx.transfer(user, deposit);
 
         hevm.startPrank(user);
         vault.createVault(address(sgx), deposit);
@@ -549,14 +554,15 @@ contract VaultFactoryTest is DSTestPlus {
     // <--------------------------------------------------------> //
     function testLiquidateVault(address user, uint256 deposit) public {
         
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
         uint256 balance;
         bool exists;
  
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        hevm.prank(address(this));
+        sgx.transfer(user, mintAmount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
@@ -617,12 +623,13 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testClaimRewards(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
         uint256 balance;
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        hevm.prank(address(this));
+        sgx.transfer(user, mintAmount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
@@ -657,13 +664,13 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testClaimRewardsWithChange(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
         uint256 balance;
 
-
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        hevm.prank(address(this));
+        sgx.transfer(user, mintAmount);
 
         hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
@@ -693,12 +700,12 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailClaimRewardsNotUser(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
         hevm.assume(user != vault.owner());
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        sgx.transfer(user, mintAmount);
 
         // 2. Approve this address to spend impersonated account tokens.
         hevm.startPrank(user);
@@ -716,11 +723,11 @@ contract VaultFactoryTest is DSTestPlus {
 
     function testFailClaimRewardsDoesntHaveVault(address user, uint256 deposit) public {
 
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        sgx.transfer(user, mintAmount);
 
         // 2. Approve this address to spend impersonated account tokens.
         hevm.startPrank(user);
@@ -735,11 +742,11 @@ contract VaultFactoryTest is DSTestPlus {
     function testFailClaimRewardsToEarlyToClaim(address user, uint256 deposit) public {
 
         // *---- Create and deposit in vault ----* //
-        uint256 mintAmount = 100000000e18; // max suplly 100.000.000
+        uint256 mintAmount = 6_000_000e18; // max suplly 100.000.000
         hevm.assume(deposit > vault.minVaultDeposit() && deposit < mintAmount);
 
         // 1. Mint token to account.
-        sgx.mint(user, mintAmount);
+        sgx.transfer(user, mintAmount);
 
         // 2. Approve this address to spend impersonated account tokens.
         hevm.startPrank(user, user);
@@ -753,6 +760,4 @@ contract VaultFactoryTest is DSTestPlus {
 
         hevm.stopPrank();
     }
-
-
 }

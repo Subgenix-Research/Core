@@ -12,6 +12,7 @@ contract SubgenixTest is DSTestPlus {
     
     function setUp() public {
         token = new Subgenix("Subgenix Currency", "SGX", 18);
+        token.setManager(address(this), true);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -25,52 +26,62 @@ contract SubgenixTest is DSTestPlus {
     }
 
     function testMint() public {
+        hevm.prank(address(this));
         token.mint(address(0xBEEF), 1e18);
 
-        assertEq(token.totalSupply(), 1e18);
+        assertEq(token.totalSupply(), 6_000_001e18);
         assertEq(token.balanceOf(address(0xBEEF)), 1e18);
     }
 
     function testBurn() public {
+        hevm.prank(address(this));
         token.mint(address(0xBEEF), 1e18);
 
         hevm.prank(address(0xBEEF));
         token.burn(0.9e18);
 
-        assertEq(token.totalSupply(), 1e18 - 0.9e18);
+        assertEq(token.totalSupply(), 6_000_001e18 - 0.9e18);
         assertEq(token.balanceOf(address(0xBEEF)), 0.1e18);
     }
 
     function testBurnFrom() public {
+        address from = address(this);
+
+        hevm.prank(from);
         token.mint(address(0xBEEF), 1e18);
 
         hevm.prank(address(0xBEEF));
-        token.burn(0.9e18);
+        token.approve(from, 1e18);
 
-        assertEq(token.totalSupply(), 1e18 - 0.9e18);
+        hevm.prank(from);
+        token.burnFrom(address(0xBEEF), 0.9e18);
+
+        assertEq(token.totalSupply(), 6_000_001e18 - 0.9e18);
         assertEq(token.balanceOf(address(0xBEEF)), 0.1e18);
     }
 
     function testTransfer() public {
+        hevm.prank(address(this));
         token.mint(address(this), 1e18);
 
         assertTrue(token.transfer(address(0xBEEF), 1e18));
-        assertEq(token.totalSupply(), 1e18);
+        assertEq(token.totalSupply(), 6_000_001e18);
 
-        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(token.balanceOf(address(this)), 6_000_000e18);
         assertEq(token.balanceOf(address(0xBEEF)), 1e18);
     }
 
     function testTransferFrom() public {
         address from = address(0xABCD);
 
+        hevm.prank(address(this));
         token.mint(from, 1e18);
 
         hevm.prank(from);
         token.approve(address(this), 1e18);
 
         assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
-        assertEq(token.totalSupply(), 1e18);
+        assertEq(token.totalSupply(), 6_000_001e18);
 
         assertEq(token.allowance(from, address(this)), 0);
 
@@ -91,13 +102,14 @@ contract SubgenixTest is DSTestPlus {
     //////////////////////////////////////////////////////////////*/
 
     function testFailTransferInsufficientBalance() public {
-        token.mint(address(this), 0.9e18);
+        hevm.prank(address(0xABCD));
         token.transfer(address(0xBEEF), 1e18);
     }
 
     function testFailTransferFromInsufficientAllowance() public {
         ERC20User from = new ERC20User(token);
 
+        hevm.prank(address(this));
         token.mint(address(from), 1e18);
         from.approve(address(this), 0.9e18);
         token.transferFrom(address(from), address(0xBEEF), 1e18);
@@ -106,6 +118,7 @@ contract SubgenixTest is DSTestPlus {
     function testFailTransferFromInsufficientBalance() public {
         ERC20User from = new ERC20User(token);
 
+        hevm.prank(address(this));
         token.mint(address(from), 0.9e18);
         from.approve(address(this), 1e18);
         token.transferFrom(address(from), address(0xBEEF), 1e18);
@@ -125,6 +138,7 @@ contract SubgenixTest is DSTestPlus {
 
         ERC20User user = new ERC20User(token);
         
+        hevm.prank(address(this));
         token.mint(address(user), 1e18);
 
         hevm.prank(address(user));
@@ -135,7 +149,8 @@ contract SubgenixTest is DSTestPlus {
         token.pauseContract(true);
 
         ERC20User from = new ERC20User(token);
-
+        
+        hevm.prank(address(this));
         token.mint(address(from), 1e18);
 
         hevm.startPrank(address(from));

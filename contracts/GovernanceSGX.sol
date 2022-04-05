@@ -9,7 +9,6 @@ error TransferFrom();
 error ErrorTransfer();
 error WithdrawCeilingAchieved();
 
-
 /// @title Governance SGX.
 /// @author Subgenix Research.
 /// @notice This is the offical governance token of the Subgenix network. 
@@ -44,9 +43,7 @@ contract GovernanceSGX is ERC20, Ownable {
     /// @notice The withdraw ceiling, manually updated by devs.
     uint256 public withdrawCeil;
 
-    constructor(
-        address _sgx
-    ) ERC20("Governance SGX", "gSGX", 18) {
+    constructor(address _sgx) ERC20("Governance SGX", "gSGX", 18) {
         sgx = IERC20(_sgx);
     }
 
@@ -82,7 +79,6 @@ contract GovernanceSGX is ERC20, Ownable {
     /// @notice Unlocks the staked + gained SGX and burns gSGX.
     /// @param share uint256, the amount of gSGX that will be burned from user.
     function withdraw(uint256 share) external {
-
         // Gets the amount of SGX locked in the contract
         uint256 totalSGX = sgx.balanceOf(address(this));
 
