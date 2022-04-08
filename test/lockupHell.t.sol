@@ -3,10 +3,10 @@ pragma solidity >= 0.8.4 < 0.9.0;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 
-import {Subgenix} from "../contracts/Subgenix.sol";
-import {VaultFactory} from "../contracts/VaultFactory.sol";
-import {LockupHell} from "../contracts/lockupHell.sol";
-import {GovernanceSGX} from "../contracts/Governancesgx.sol";
+import {Subgenix} from "../src/Subgenix.sol";
+import {VaultFactory} from "../src/VaultFactory.sol";
+import {LockupHell} from "../src/lockupHell.sol";
+import {GovernanceSGX} from "../src/Governancesgx.sol";
 import {MockWAVAX} from "./utils/mocks/MockWAVAX.sol";
 
 contract LockUpHellTest is DSTestPlus {
@@ -17,6 +17,9 @@ contract LockUpHellTest is DSTestPlus {
     GovernanceSGX internal gsgx;
     address internal treasury = address(0xBEEF);
     address internal research = address(0xABCD);
+
+    uint256 internal shortRewards = 1e18;
+    uint256 internal longRewards = 5e18;
 
     struct LockupType {
         bool longRewardsCollected;     // True if user collected long rewards, false otherwise.
@@ -65,24 +68,27 @@ contract LockUpHellTest is DSTestPlus {
                               UNIT-TESTS 
     //////////////////////////////////////////////////////////////*/
 
-    function testLockupRewards(address user, uint256 shortRewards) public {
+    function testLockupRewards() public {
+        address user = address(0x0ABCD);
+        uint256 depositAmount = 10e18;
 
-        uint256 longRewards = 3_000_000e18;
+        sgx.transfer(address(vault), depositAmount);
 
-        hevm.assume(shortRewards > vault.minVaultDeposit() && shortRewards < longRewards);
+        hevm.prank(address(vault));
+        sgx.approve(address(lockup), depositAmount);
 
-        hevm.prank(address(this));
-        sgx.transfer(address(vault), (shortRewards+longRewards));
+        hevm.prank(address(user)); // Impersonate user
 
-        hevm.startPrank(address(vault));
-        sgx.approve(address(lockup), (shortRewards+longRewards));
-        lockup.lockupRewards(user, shortRewards, longRewards);
-        hevm.stopPrank();
+        // Assert User has 0 lockups before doing anything.
+        assertEq(lockup.usersLockupLength(address(user)), 0);
+        
+        hevm.prank(address(vault)); // Impersonate vaultFactory
+        lockup.lockupRewards(address(user), shortRewards, longRewards);
 
         // Assert User has 1 lockup.
-        uint32 index = lockup.usersLockupLength(user);
+        uint32 index = lockup.usersLockupLength(address(user));
         assertEq(index, 1);
-
+        
         LockupType memory userLockup;
         
         // Get lockup Info
@@ -110,28 +116,27 @@ contract LockUpHellTest is DSTestPlus {
         hevm.stopPrank();
     }
 
-    function testClaimShortLockup(address user, uint256 shortRewards) public {
+    function testClaimShortLockup() public {
+        address user = address(0x0ABCD);
+        uint256 depositAmount = 10e18;
         
-        uint256 longRewards = 3_000_000e18;
-
-        hevm.assume(shortRewards > vault.minVaultDeposit() && shortRewards < longRewards);
-
-        hevm.prank(address(this));
-        sgx.transfer(address(vault), (shortRewards + longRewards));
+        sgx.transfer(address(vault), depositAmount);
 
         hevm.startPrank(address(vault));
-        sgx.approve(address(lockup), (shortRewards + longRewards));
-        lockup.lockupRewards(user, shortRewards, longRewards);
+        sgx.approve(address(lockup), depositAmount);
+    
+        lockup.lockupRewards(address(user), shortRewards, longRewards);
+
         hevm.stopPrank();
 
-        hevm.startPrank(user); // Impersonate user
+        hevm.startPrank(address(user)); // Impersonate user
 
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
 
-        uint32 index = lockup.usersLockupLength(user);
+        uint32 index = lockup.usersLockupLength(address(user));
         
-        uint256 balanceBefore = sgx.balanceOf(user);
+        uint256 balanceBefore = sgx.balanceOf(address(user));
 
         LockupType memory userLockup;
         
@@ -144,38 +149,36 @@ contract LockUpHellTest is DSTestPlus {
           ,
           ,
           ,
-         userLockup.shortRewards) = lockup.usersLockup(user, index);
+         userLockup.shortRewards) = lockup.usersLockup(address(user), index);
 
         assertTrue(userLockup.shortRewardsCollected);
         assertEq(userLockup.shortRewards, 0);
-        assertEq(sgx.balanceOf(user), (balanceBefore+shortRewards));
-        balanceBefore = sgx.balanceOf(user);
+        assertEq(sgx.balanceOf(address(user)), (balanceBefore+shortRewards));
+        balanceBefore = sgx.balanceOf(address(user));
 
         hevm.stopPrank();
     }
 
-    function testClaimLongLockup(address user, uint256 shortRewards) public {
-
-        uint256 longRewards = 3_000_000e18;
-
-        hevm.assume(shortRewards > vault.minVaultDeposit() && shortRewards < longRewards);
+    function testClaimLongLockup() public {
+        address user = address(0x0ABCD);
+        uint256 depositAmount = 10e18;
         
-        hevm.prank(address(this));
-        sgx.transfer(address(vault), (shortRewards + longRewards));
+        sgx.transfer(address(vault), depositAmount);
 
-        hevm.startPrank(address(vault));
-        sgx.approve(address(lockup), (shortRewards + longRewards));
-        lockup.lockupRewards(user, shortRewards, longRewards);
-        hevm.stopPrank();
+        hevm.prank(address(vault));
+        sgx.approve(address(lockup), depositAmount);
+        
+        hevm.prank(address(vault)); // Impersonate vaultFactory
+        lockup.lockupRewards(address(user), shortRewards, longRewards);
 
-        hevm.startPrank(user); // Impersonate user
+        hevm.startPrank(address(user)); // Impersonate user
 
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
 
-        uint32 index = lockup.usersLockupLength(user);
+        uint32 index = lockup.usersLockupLength(address(user));
         
-        uint256 balanceBefore = sgx.balanceOf(user);
+        uint256 balanceBefore = sgx.balanceOf(address(user));
 
         LockupType memory userLockup;
         
@@ -188,131 +191,155 @@ contract LockUpHellTest is DSTestPlus {
           ,
           ,
          userLockup.longRewards,
-        ) = lockup.usersLockup(user, index);
+          ) = lockup.usersLockup(address(user), index);
 
         assertTrue(userLockup.longRewardsCollected);
         assertEq(userLockup.longRewards, 0);
-        assertEq(sgx.balanceOf(user), (balanceBefore+longRewards));
+        assertEq(sgx.balanceOf(address(user)), (balanceBefore+longRewards));
 
         hevm.stopPrank();
+    }
+
+    // <----------------------------------------------------> //
+    // <---------------- TEST VEW FUNCTIONS ----------------> //
+    // <----------------------------------------------------> //
+    function testGetLongLockupTime() public {
+        assertEq(lockup.getLongLockupTime(), 18 days);
+    }
+
+    function testGetShortLockupTime() public {
+        assertEq(lockup.getShortLockupTime(), 7 days);
+    }
+
+    function testGetLongPercentage() public {
+        assertEq(lockup.getLongPercentage(), 18e16);
+    }
+
+    function testGetShortPercentage() public {
+        assertEq(lockup.getShortPercentage(), 12e16);
     }
 
     // <----------------------------------------------------> //
     // <---------------- TEST SET FUNCTIONS ----------------> //
     // <----------------------------------------------------> //
 
-    function testSetLongLockupTime(uint32 time) public {
-        lockup.setLongLockupTime(time);
-        assertEq(lockup.getLongLockupTime(), time);
+    function testSetLongLockupTime() public {
+        lockup.setLongLockupTime(12 days);
+        assertEq(lockup.getLongLockupTime(), 12 days);
     }
 
-    function testSetShortLockupTime(uint32 time) public {
-        lockup.setShortLockupTime(time);
-        assertEq(lockup.getShortLockupTime(), time);
+    function testSetShortLockupTime() public {
+        lockup.setShortLockupTime(10 days);
+        assertEq(lockup.getShortLockupTime(), 10 days);
     }
 
-    function testSetLongPercentage(uint256 time) public {
-        lockup.setLongPercentage(time);
-        assertEq(lockup.getLongPercentage(), time);
+    function testSetLongPercentage() public {
+        lockup.setLongPercentage(12e16);
+        assertEq(lockup.getLongPercentage(), 12e16);
     }
 
-    function testSetShortPercentage(uint256 time) public {
-        lockup.setShortPercentage(time);
-        assertEq(lockup.getShortPercentage(), time);
+    function testSetShortPercentage() public {
+        lockup.setShortPercentage(10e16);
+        assertEq(lockup.getShortPercentage(), 10e16);
     }
 
     // <----------------------------------------------------> //
     // <-------------------- TEST  FAIL --------------------> //
     // <----------------------------------------------------> //
 
-    function testFailLockupRewardsNotUser(
-        address user,
-        uint256 shortRewards, 
-        uint256 longRewards
-        ) public {
+    function testFailLockupRewardsNotUser() public {
         
         sgx.approve(address(lockup), 10e18);
-        lockup.lockupRewards(user, shortRewards, longRewards);
+        lockup.lockupRewards(address(0xbeef), shortRewards, longRewards);
     }
 
-    function testFailLockupRewardsInsufficientFunds(
-        address user,
-        uint256 shortRewards, 
-        uint256 longRewards
-    ) public {
-        hevm.assume(shortRewards > 0 && longRewards > 0);
-
-        hevm.startPrank(address(vault));
-        sgx.approve(address(lockup), (shortRewards + longRewards));
-        lockup.lockupRewards(user, shortRewards, longRewards);
-        hevm.stopPrank();
+    function testFailLockupRewardsInsufficientFunds() public {
+        
+        sgx.approve(address(lockup), 10e18);
+        lockup.lockupRewards(msg.sender, shortRewards, 15e18);
     }
 
-    function testFailclaimShortLockupIndexInvalid(
-        uint32 index,
-        uint256 shortRewards, 
-        uint256 longRewards
-        ) public {
+    function testFailclaimShortLockupIndexInvalid() public {
 
-        hevm.assume(index >= 2);
-
+        
         sgx.approve(address(lockup), 10e18);
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
         
+        lockup.claimShortLockup(2);
+    }
+
+    function testFailclaimShortLockupAlreadyClaimed() public {
+        
+        sgx.approve(address(lockup), 10e18);
+        lockup.lockupRewards(msg.sender, shortRewards, longRewards);
+
+        // Jump 20 days in the future.
+        hevm.warp(block.timestamp + 20 days);
+
+        uint32 index = lockup.usersLockupLength(msg.sender);
+        
+        // Claim once.
+        lockup.claimShortLockup(index);
+
+        // Try to claim again.
         lockup.claimShortLockup(index);
     }
 
-    function testFailclaimShortLockupTooEarly(
-        uint256 time,
-        uint256 shortRewards, 
-        uint256 longRewards
-        ) public {
+    function testFailclaimShortLockupTooEarly() public {
         
-        hevm.assume(time < lockup.getShortLockupTime());
-
         sgx.approve(address(lockup), 10e18);
         
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
         // Jump 1 day in the future.
-        hevm.warp(block.timestamp + time);
+        hevm.warp(block.timestamp + 24 hours);
+
+        uint32 index = lockup.usersLockupLength(msg.sender);
         
-        lockup.claimShortLockup(lockup.usersLockupLength(msg.sender));
+        lockup.claimShortLockup(index);
     }
 
-    function testFailclaimLongLockupIndexInvalid(
-        uint32 index,
-        uint256 shortRewards, 
-        uint256 longRewards
-        ) public {
+    function testFailclaimLongLockupIndexInvalid() public {
         
-        hevm.assume(index >= 2);
         sgx.approve(address(lockup), 10e18);
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
         // Jump 20 days in the future.
         hevm.warp(block.timestamp + 20 days);
         
+        lockup.claimLongLockup(2);
+    }
+
+    function testFailclaimLongLockupAlreadyClaimed() public {
+
+        sgx.approve(address(lockup), 10e18);        
+        lockup.lockupRewards(msg.sender, shortRewards, longRewards);
+
+        // Jump 20 days in the future.
+        hevm.warp(block.timestamp + 20 days);
+
+        uint32 index = lockup.usersLockupLength(msg.sender);
+        
+        // Claim once.
+        lockup.claimLongLockup(index);
+
+        // Try to claim again.
         lockup.claimLongLockup(index);
     }
 
-    function testFailclaimLongLockupTooEarly(
-        uint256 time,
-        uint256 shortRewards, 
-        uint256 longRewards
-        ) public {
-
-        hevm.assume(time < lockup.getLongLockupTime());
+    function testFailclaimLongLockupTooEarly() public {
 
         sgx.approve(address(lockup), 10e18);        
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);
 
         // Jump 1 day in the future.
-        hevm.warp(block.timestamp + time);
+        hevm.warp(block.timestamp + 24 hours);
+
+        uint32 index = lockup.usersLockupLength(msg.sender);
         
-        lockup.claimLongLockup(lockup.usersLockupLength(msg.sender));
+        lockup.claimLongLockup(index);
     }
 }

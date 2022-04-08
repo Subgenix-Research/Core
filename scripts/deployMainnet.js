@@ -1,10 +1,10 @@
 const { ethers } = require("ethers");
 require("colors");
 require('dotenv').config()
-const SubgenixJson = require("../artifacts/contracts/Subgenix.sol/Subgenix.json");
-const GovernanceSGXJson = require("../artifacts/contracts/GovernanceSGX.sol/GovernanceSGX.json");
-const LockupHellJson = require("../artifacts/contracts/LockupHell.sol/LockupHell.json");
-const VaultFactoryJson = require("../artifacts/contracts/VaultFactory.sol/VaultFactory.json");
+const SubgenixJson = require("../out/Subgenix.sol/Subgenix.json");
+const GovernanceSGXJson = require("../out/GovernanceSGX.sol/GovernanceSGX.json");
+const LockupHellJson = require("../out/LockupHell.sol/LockupHell.json");
+const VaultFactoryJson = require("../out/VaultFactory.sol/VaultFactory.json");
 
 async function main() {
 

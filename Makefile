@@ -1,11 +1,7 @@
-build:
-	forge build
+build:; forge build
 
-clean:
-	forge clean
+clean:; forge clean
 
-test:
-	forge test
+test:; forge test
 
-snap:
-	forge snapshot
+snap:; forge snapshot

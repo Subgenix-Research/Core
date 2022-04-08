@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0;
+pragma solidity >=0.8.4 < 0.9.0;
 
-import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
-import {SafeTransferLib} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
+import {ERC20} from "@solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "@solmate/src/utils/SafeTransferLib.sol";
 
-contract MockWAVAX is ERC20("Wrapped Ether", "WETH", 18) {
+contract MockWAVAX is ERC20("Wrapped AVAX", "WAVAX", 18) {
     using SafeTransferLib for address;
 
     event Deposit(address indexed from, uint256 amount);
@@ -27,10 +27,5 @@ contract MockWAVAX is ERC20("Wrapped Ether", "WETH", 18) {
 
     receive() external payable virtual {
         deposit();
-    }
-
-    // For testing purposes
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
     }
 }

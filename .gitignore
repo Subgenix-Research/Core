@@ -4,6 +4,7 @@ out/
 node_modules/
 artifacts/
 future/
+relaunch/
 
 # Files
 .DS_Store

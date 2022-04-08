@@ -3,9 +3,9 @@ pragma solidity >= 0.8.4 < 0.9.0;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 
-import {Subgenix} from "../contracts/Subgenix.sol";
-import {VaultFactory} from "../contracts/VaultFactory.sol";
-import {GovernanceSGX} from "../contracts/Governancesgx.sol";
+import {Subgenix} from "../src/Subgenix.sol";
+import {VaultFactory} from "../src/VaultFactory.sol";
+import {GovernanceSGX} from "../src/Governancesgx.sol";
 
 
 contract GSGXTest is DSTestPlus {

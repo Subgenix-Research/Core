@@ -3,10 +3,10 @@ pragma solidity >= 0.8.4 < 0.9.0;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
 
-import {Subgenix} from "../contracts/Subgenix.sol";
-import {VaultFactory} from "../contracts/VaultFactory.sol";
-import {LockupHell} from "../contracts/lockupHell.sol";
-import {GovernanceSGX} from "../contracts/Governancesgx.sol";
+import {Subgenix} from "../src/Subgenix.sol";
+import {VaultFactory} from "../src/VaultFactory.sol";
+import {LockupHell} from "../src/lockupHell.sol";
+import {GovernanceSGX} from "../src/Governancesgx.sol";
 import {MockWAVAX} from "./utils/mocks/MockWAVAX.sol";
 import {Helper} from "./utils/Helper.sol";
 
@@ -119,16 +119,16 @@ contract VaultFactoryTest is DSTestPlus {
         uint256 balance;
         uint256 interestLength;
         VaultFactory.VaultLeague league;
+
+        // 1. Set user balance to 10e18
+        hevm.deal(user, 10e18);
+
+        hevm.startPrank(address(user));
+        wavax.deposit{value: 2e18}();
  
-        // 1. Mint token to account.
-        wavax.mint(address(user), 10e18);
         uint256 balanceBefore = wavax.balanceOf(address(user));
 
-        // 2. Approve this address to spend impersonated account tokens.
-        hevm.startPrank(address(user));
         wavax.approve(address(vault), deposit);
-
-        // 3. Impersonate user. 
         vault.createVault(address(wavax), deposit);
 
         (exists,
@@ -205,15 +205,15 @@ contract VaultFactoryTest is DSTestPlus {
         uint256 interestLength;
         VaultFactory.VaultLeague league;
  
-        // 1. Mint token to account.
-        wavax.mint(address(user), 10e18);
+        // 1. Set user balance to 10e18
+        hevm.deal(user, 10e18);
+
+        hevm.startPrank(address(user));
+        wavax.deposit{value: 2e18}();
+ 
         uint256 balanceBefore = wavax.balanceOf(address(user));
 
-        // 2. Approve this address to spend impersonated account tokens.
-        hevm.startPrank(address(user));
         wavax.approve(address(vault), deposit);
-
-        // 3. Impersonate user. 
         vault.createVault(address(wavax), deposit);
 
         (exists,
@@ -373,7 +373,6 @@ contract VaultFactoryTest is DSTestPlus {
     function testDepositInVaultWithWAVAX() public {
         address user = address(0x0ABCD);
 
-        uint256 amount = 10e18;
         uint256 deposit = 1e18;
         uint256 firstBalance;
 
@@ -381,11 +380,14 @@ contract VaultFactoryTest is DSTestPlus {
         uint256 secondBalance;
         VaultFactory.VaultLeague league;
 
-        // 1. Mint token to account.
-        wavax.mint(user, amount);
+        // 1. Set user balance to 10e18
+        hevm.deal(user, 10e18);
+
+        hevm.startPrank(address(user));
+        wavax.deposit{value: 2e18}();
+ 
         uint256 balanceBefore = wavax.balanceOf(user);
 
-        hevm.startPrank(user);
         // 2. Approve this address to spend impersonated account tokens.
         wavax.approve(address(vault), deposit+deposit);
 

@@ -57,7 +57,7 @@ Follow the example from the [.env.example](.env.example) file.
 
 
 To deploy the contracts in the testnet you can run the command:   
-`npx hardhat run scripts/deployTestnet.js --network fuji`.
-    
+`node scripts/deployTestnet.js`.
+
 To deploy the contracts in the mainnet you can run the command:   
-`npx hardhat run scripts/deployMainnet.js --network mainnet`.
+`node scripts/deployMainnet.js`.

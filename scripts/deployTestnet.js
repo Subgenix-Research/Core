@@ -1,10 +1,10 @@
 const { ethers } = require("ethers");
 require("colors");
 require('dotenv').config()
-const SubgenixJson = require("../artifacts/contracts/Subgenix.sol/Subgenix.json");
-const GovernanceSGXJson = require("../artifacts/contracts/GovernanceSGX.sol/GovernanceSGX.json");
-const LockupHellJson = require("../artifacts/contracts/LockupHell.sol/LockupHell.json");
-const VaultFactoryJson = require("../artifacts/contracts/VaultFactory.sol/VaultFactory.json");
+const SubgenixJson = require("../out/Subgenix.sol/Subgenix.json");
+const GovernanceSGXJson = require("../out/GovernanceSGX.sol/GovernanceSGX.json");
+const LockupHellJson = require("../out/LockupHell.sol/LockupHell.json");
+const VaultFactoryJson = require("../out/VaultFactory.sol/VaultFactory.json");
 
 async function main() {
 
@@ -14,7 +14,7 @@ async function main() {
 
     const treasury = "0x0000000000000000000000000000000000000001"; 
     const research = "0x0000000000000000000000000000000000000001";
-    const wavax = "0xfee34F9C22Bb731B187b6f09D21E4Fb07b2612f7"; // Testnet
+    const wavax = "0xc06EA0cB83749c84424526f97Ab3cc1a1353A910"; // Testnet
 
     console.log("Owner:", owner.address);
 

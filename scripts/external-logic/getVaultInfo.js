@@ -1,8 +1,15 @@
+const { ethers } = require("ethers");
+require("colors");
+require('dotenv').config()
+const VaultFactoryJson = require("../out/VaultFactory.sol/VaultFactory.json");
+
 async function main() {
 
-    const [owner] = await ethers.getSigners();
+    const provider = new ethers.providers.JsonRpcProvider("https://api.avax.network/ext/bc/C/rpc");
 
-    const VaultFactory = await ethers.getContractFactory("VaultFactory");
+    const owner = new ethers.Wallet(process.env.privateKey, provider);
+
+    const VaultFactory = await ethers.ContractFactory(VaultFactoryJson.abi, VaultFactoryJson.bytcode, owner);
     const vault = VaultFactory.attach("0xe686C61922e7F20dbD5aCCD2B4DaB9dC0e8Fd853");
 
     // Get All info.
