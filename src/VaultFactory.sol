@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >= 0.8.4 < 0.9.0;
+pragma solidity 0.8.4;
 
 import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -13,6 +13,9 @@ error AlreadyHasVault();
 error DoenstHaveVault();
 error TokenNotAccepted();
 error CircuitBreakerActivated();
+error joeRouterExcessiveInput();
+error CannotBeZeroAddress();
+error BoostTooSmall();
 error TooEarlyToClaim();
 error AmountTooSmall();
 error AmountTooBig();
@@ -48,12 +51,21 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         address _research,
         address _lockup
     ) {
+
+        if (_wavax == address(0)) revert CannotBeZeroAddress();
+        if (_sgx == address(0)) revert CannotBeZeroAddress();
+        if (_gSGX == address(0)) revert CannotBeZeroAddress();
+        if (_treasury == address(0)) revert CannotBeZeroAddress();
+        if (_research == address(0)) revert CannotBeZeroAddress();
+        if (_lockup == address(0)) revert CannotBeZeroAddress();
+
         wavax = _wavax;
         sgx = _sgx;
         gSGX = _gSGX;
         treasury = _treasury;
         research = _research;
         lockup = _lockup;
+
 
         acceptedTokens[_wavax] = true;
     }
@@ -220,7 +232,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @notice Updates the network boost.
     /// @param boost uint256, the new network boost.
     function setNetworkBoost(uint256 boost) external onlyOwner {
-        // Should be >= 1e18.
+        if (boost < 1e18) revert BoostTooSmall();
         networkBoost = boost;
         emit NetworkBoostUpdated(boost);
     }
@@ -347,13 +359,12 @@ contract VaultFactory is Ownable, ReentrancyGuard {
                 result -= swapAmount;
             }
 
-            Isgx(token).approve(treasury, result);
             Isgx(token).transfer(treasury, result);
 
         }
     }
 
-    /// @notice Deposits `amount` of SGX in the vault.
+    /// @notice Deposits `amount` of specified token in the vault.
     /// @param token address, the token being used to deposit in the vault.
     /// @param amount uint256, amount that will be deposited in the vault.
     function depositInVault(address token, uint256 amount) external nonReentrant {
@@ -414,7 +425,6 @@ contract VaultFactory is Ownable, ReentrancyGuard {
                 result -= swapAmount;
             }
 
-            Isgx(token).approve(treasury, result);
             Isgx(token).transfer(treasury, result);
         }
     }
@@ -476,7 +486,6 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         Isgx(token).transferFrom(msg.sender, address(this), amount);
 
         if (!liquidityAccumulationPhase) {
-            Isgx(token).approve(treasury, amount);
             Isgx(token).transfer(treasury, amount);
         }
     }
@@ -542,6 +551,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     function swapSGXforAVAX(uint256 swapAmount) private {
 
         address[] memory path;
+        uint[] memory amounts;
         path = new address[](2);
         path[0] = address(sgx);
         path[1] = wavax;
@@ -550,8 +560,10 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         uint256 toResearch = swapAmount - toTreasury;
 
         Isgx(sgx).approve(address(joeRouter), swapAmount);
-        joeRouter.swapExactTokensForAVAX(toTreasury, 0, path, treasury, block.timestamp);
-        joeRouter.swapExactTokensForAVAX(toResearch, 0, path, research, block.timestamp);
+        amounts = joeRouter.swapExactTokensForAVAX(toTreasury, 0, path, treasury, block.timestamp);
+        if (amounts[0] > 0) revert joeRouterExcessiveInput();
+        amounts = joeRouter.swapExactTokensForAVAX(toResearch, 0, path, research, block.timestamp);
+        if (amounts[0] > 0) revert joeRouterExcessiveInput();
     }
 
     // <--------------------------------------------------------> //
@@ -604,7 +616,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
     /// @notice Claims the available rewards from user's vault.
     /// @param user address, who we are claiming rewards of.
-    function claimRewards(address user) public nonReentrant {
+    function claimRewards(address user) external nonReentrant {
         Vault memory userVault = usersVault[user];
         
         uint256 localLastClaimTime = userVault.lastClaimTime;
