@@ -32,8 +32,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     // <----------------------- METADATA -----------------------> //
     // <--------------------------------------------------------> //
 
-    // 1 AVAX / 0.0013 SGX
-    uint256 internal constant WAVAXCONVERSION = 7692307692307693;
+    uint256 internal constant WAVAXCONVERSION = 770e18;
     IJoeRouter02 internal joeRouter = IJoeRouter02(0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
 
     address internal immutable wavax;  // WAVAX token address.
@@ -65,9 +64,6 @@ contract VaultFactory is Ownable, ReentrancyGuard {
         treasury = _treasury;
         research = _research;
         lockup = _lockup;
-
-
-        acceptedTokens[_wavax] = true;
     }
 
     // <--------------------------------------------------------> //

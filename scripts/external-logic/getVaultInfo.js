@@ -10,7 +10,7 @@ async function main() {
     const owner = new ethers.Wallet(process.env.privateKey, provider);
 
     const VaultFactory = await ethers.ContractFactory(VaultFactoryJson.abi, VaultFactoryJson.bytcode, owner);
-    const vault = VaultFactory.attach("0xe686C61922e7F20dbD5aCCD2B4DaB9dC0e8Fd853");
+    const vault = VaultFactory.attach("0x19EBe400929A04Fa3C978C9f5386862cB28142E5");
 
     // Get All info.
     const [
@@ -22,18 +22,16 @@ async function main() {
         league
     ] = await vault.usersVault(owner.address);
 
-    // Get User Balance.
+    // Example, Get User Balance.
     const [ , , , balance, , ] = await vault.usersVault(owner.address);
 
 
-    // Get User League
+    // Example, Get User League
     const [ , , , , , league] = await vault.usersVault(owner.address);
 
 
-    // Check if vault exists.
+    // Example, Check if vault exists.
     const [exists, , , , , ] = await vault.usersVault(owner.address);
-
-
 }
 
 main()

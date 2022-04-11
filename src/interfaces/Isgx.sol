@@ -5,15 +5,6 @@ pragma solidity 0.8.4;
  * @dev Interface of the ERC20 standard with mint and burn functions.
  */
 interface Isgx {
-    /**
-     * @dev Returns the amount of tokens in existence.
-     */
-    function totalSupply() external view returns (uint256);
-
-    /**
-     * @dev Returns the amount of tokens owned by `account`.
-     */
-    function balanceOf(address account) external view returns (uint256);
 
     /**
      * @dev Moves `amount` tokens from the caller's account to `to`.
@@ -23,15 +14,6 @@ interface Isgx {
      * Emits a {Transfer} event.
      */
     function transfer(address to, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
-    function allowance(address owner, address spender) external view returns (uint256);
 
     /**
      * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.

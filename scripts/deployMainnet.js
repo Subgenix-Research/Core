@@ -99,6 +99,9 @@ async function main() {
     console.log("   set token manager..");
     await (await SGX.setManager(vault.address, true)).wait();
 
+    console.log("   add accepted tokens..");
+    await (await vault.setAcceptedTokens(wavax, true)).wait();
+
     console.log("All done!".green);
 }
 

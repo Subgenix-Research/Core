@@ -20,7 +20,7 @@ contract VaultFactoryTest is DSTestPlus {
     address internal treasury = address(0xBEEF);
     address internal research = address(0xABCD);
 
-    uint256 internal constant WAVAXCONVERSION = 7692307692307693;
+    uint256 internal constant WAVAXCONVERSION = 770e18;
 
     using Helper for uint256;
 
@@ -45,15 +45,16 @@ contract VaultFactoryTest is DSTestPlus {
 
         lockup.setVaultFactory(address(vault));
 
-        vault.setInterestRate(7e18);                 // Daily rewards, 700e18 = 700%
-        vault.setBurnPercent(2e16);                  // Percentage burned when claiming rewards, 200 = 2%.
-        vault.setgSGXPercent(13e16);                 // Percentage of rewards converted to gSGX
-        vault.setgSGXDistributed(5e16);              // Percentage of rewards sent to the gSGX contract.
-        vault.setMinVaultDeposit(1e18);              // Minimum amount required to deposite in Vault.
-        vault.setNetworkBoost(1e18);                 // SGX booster.
-        vault.setRewardsWaitTime(24 hours);          // rewards wait time.
-        vault.setLiquidateVaultPercent(15e16);       // 15% of the vault back to the user.
-        vault.setAcceptedTokens(address(sgx), true); // Add sgx to the accepted tokens
+        vault.setInterestRate(7e18);                   // Daily rewards, 700e18 = 700%
+        vault.setBurnPercent(2e16);                    // Percentage burned when claiming rewards, 200 = 2%.
+        vault.setgSGXPercent(13e16);                   // Percentage of rewards converted to gSGX
+        vault.setgSGXDistributed(5e16);                // Percentage of rewards sent to the gSGX contract.
+        vault.setMinVaultDeposit(1e18);                // Minimum amount required to deposite in Vault.
+        vault.setNetworkBoost(1e18);                   // SGX booster.
+        vault.setRewardsWaitTime(24 hours);            // rewards wait time.
+        vault.setLiquidateVaultPercent(15e16);         // 15% of the vault back to the user.
+        vault.setAcceptedTokens(address(sgx), true);   // Add sgx to the accepted tokens
+        vault.setAcceptedTokens(address(wavax), true); // Add wavax to the accepted tokens
 
         sgx.setManager(address(vault), true);
 

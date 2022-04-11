@@ -17,7 +17,6 @@ VaultFactory  — "The vaultFactory where users vaults are created & managed."
 
 **Dependencies**:
 - [Foundry](https://github.com/gakonst/foundry#installation) - As the Development framework.   
-- [Hardhat](https://github.com/NomicFoundation/hardhat) - As the deployment tool.    
 - [Solmate](https://github.com/Rari-Capital/solmate) - Library for gas optimized smart contract development.    
 - [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts) - Library for secure smart contract development.    
       
@@ -26,9 +25,8 @@ To install all dependencies follow the next steps (you need to have foundry and 
 2. Install all dependencies used with hardhat: `npm install`
 3. Install all dependencies used with Foundry: `forge install`
 
-      
-To compile all our contracts with foundry & hardhat use the following command: `make build`  
-To run all our tests use the following command: `make test`   
+To compile all our contracts with foundry use the following command: `make build`  
+To run all our tests use the following command: `forge test`   
 
 ## Security:
 
