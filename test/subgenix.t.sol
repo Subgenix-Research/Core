@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >= 0.8.4 < 0.9.0;
+pragma solidity 0.8.4;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
-
 import {Subgenix} from "../src/Subgenix.sol";
-import {ERC20User} from "@solmate/src/test/utils/users/ERC20User.sol";
-
 
 contract SubgenixTest is DSTestPlus {
     Subgenix internal token;
@@ -107,55 +104,61 @@ contract SubgenixTest is DSTestPlus {
     }
 
     function testFailTransferFromInsufficientAllowance() public {
-        ERC20User from = new ERC20User(token);
+        address from = address(0xABCD);
 
         hevm.prank(address(this));
-        token.mint(address(from), 1e18);
-        from.approve(address(this), 0.9e18);
-        token.transferFrom(address(from), address(0xBEEF), 1e18);
+        token.mint(from, 1e18);
+
+        hevm.prank(from);
+        token.approve(address(this), 0.9e18);
+
+        token.transferFrom(from, address(0xBEEF), 1e18);
     }
 
     function testFailTransferFromInsufficientBalance() public {
-        ERC20User from = new ERC20User(token);
+        address from = address(0xABCD);
 
         hevm.prank(address(this));
-        token.mint(address(from), 0.9e18);
-        from.approve(address(this), 1e18);
-        token.transferFrom(address(from), address(0xBEEF), 1e18);
+        token.mint(from, 0.9e18);
+
+        hevm.prank(from);
+        token.approve(address(this), 1e18);
+
+        token.transferFrom(from, address(0xBEEF), 1e18);
     }
 
 
     function testFailSetManagerNotOwner() public {
-        ERC20User user = new ERC20User(token);
+        address user = address(0xABCD);
 
-        hevm.prank(address(user));
-        token.setManager(address(user), true);
+        hevm.prank(user);
+        token.setManager(user, true);
     }
 
 
     function testFailTransferWhenPaused() public {
         token.pauseContract(true);
 
-        ERC20User user = new ERC20User(token);
+        address user = address(0xABCD);
         
         hevm.prank(address(this));
-        token.mint(address(user), 1e18);
+        token.mint(user, 1e18);
 
-        hevm.prank(address(user));
+        hevm.prank(user);
         token.transfer(address(0xBEEF), 1e18);
     }
 
     function testFailTransferFromWhenPaused() public {
         token.pauseContract(true);
 
-        ERC20User from = new ERC20User(token);
-        
+        address from = address(0xABCD);
+    
         hevm.prank(address(this));
-        token.mint(address(from), 1e18);
+        token.mint(from, 1e18);
 
-        hevm.startPrank(address(from));
+        hevm.startPrank(from);
         token.approve(address(this), 1e18);
-        token.transferFrom(address(from), address(0xBEEF), 1e18);
+        token.transferFrom(from, address(0xBEEF), 1e18);
 
         hevm.stopPrank();
     }

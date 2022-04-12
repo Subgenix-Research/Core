@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >= 0.8.4 < 0.9.0;
+pragma solidity 0.8.4;
 
 import {DSTestPlus} from "./utils/DSTestPlus.sol";
-
 import {Subgenix} from "../src/Subgenix.sol";
-import {ERC20User} from "@solmate/src/test/utils/users/ERC20User.sol";
-
 
 contract SubgenixTest is DSTestPlus {
     Subgenix internal token;
@@ -143,12 +140,15 @@ contract SubgenixTest is DSTestPlus {
     ) public {
         hevm.assume(amount > approval);
 
-        ERC20User from = new ERC20User(token);
+        address from = address(0xABCD);
 
         hevm.prank(address(this));
-        token.mint(address(from), amount);
-        from.approve(address(this), approval);
-        token.transferFrom(address(from), to, amount);
+        token.mint(from, amount);
+
+        hevm.prank(from);
+        token.approve(address(this), approval);
+
+        token.transferFrom(from, to, amount);
     }
 
     function testFailTransferFromInsufficientBalance(
@@ -158,12 +158,15 @@ contract SubgenixTest is DSTestPlus {
     ) public {
         hevm.assume(sendAmount > mintAmount);
 
-        ERC20User from = new ERC20User(token);
+        address from = address(0xABCD);
 
         hevm.prank(address(this));
-        token.mint(address(from), mintAmount);
-        from.approve(address(this), sendAmount);
-        token.transferFrom(address(from), to, sendAmount);
+        token.mint(from, mintAmount);
+
+        hevm.prank(from);
+        token.approve(address(this), sendAmount);
+    
+        token.transferFrom(from, to, sendAmount);
     }
 
     function testFailSetManagerNotOwner(address user) public {
