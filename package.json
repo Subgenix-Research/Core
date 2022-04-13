@@ -3,6 +3,10 @@
         "colors": "^1.4.0",
         "dotenv": "^16.0.0",
         "ethers": "^5.5.4",
-        "solhint": "^3.3.7"
+        "prettier": "^2.3.1",
+        "prettier-plugin-solidity": "^1.0.0-beta.13"
+    },
+    "scripts": {
+        "lint": "prettier --write src/*.sol"
     }
 }

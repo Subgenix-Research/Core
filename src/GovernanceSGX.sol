@@ -11,12 +11,11 @@ error WithdrawCeilingAchieved();
 
 /// @title Governance SGX.
 /// @author Subgenix Research.
-/// @notice This is the offical governance token of the Subgenix network. 
+/// @notice This is the offical governance token of the Subgenix network.
 contract GovernanceSGX is ERC20, Ownable {
-
     // <--------------------------------------------------------> //
     // <------------------------ EVENTS ------------------------> //
-    // <--------------------------------------------------------> // 
+    // <--------------------------------------------------------> //
 
     /// @notice Emitted when user deposits their SGX for gSGX.
     /// @param user address, the user we are sending gSGX to.
@@ -35,10 +34,10 @@ contract GovernanceSGX is ERC20, Ownable {
 
     // <--------------------------------------------------------> //
     // <------------------- GLOBAL VARIABLES -------------------> //
-    // <--------------------------------------------------------> // 
+    // <--------------------------------------------------------> //
 
     // Subgenix Network offical token.
-    IERC20 immutable internal sgx;
+    IERC20 internal immutable sgx;
 
     /// @notice The withdraw ceiling, manually updated by devs.
     uint256 public withdrawCeil;
@@ -49,7 +48,7 @@ contract GovernanceSGX is ERC20, Ownable {
 
     // <--------------------------------------------------------> //
     // <------------------ EXTERNAL FUNCTIONS ------------------> //
-    // <--------------------------------------------------------> // 
+    // <--------------------------------------------------------> //
 
     /// @notice Locks SGX and mints gSGX.
     /// @param to address, user we are sending the gSGX to.
@@ -89,10 +88,12 @@ contract GovernanceSGX is ERC20, Ownable {
         uint256 amount = (share * totalSGX) / totalShares;
 
         // Check with withdraw ceiling wasn't hit yet.
-        if (withdrawCeil < amount) { revert WithdrawCeilingAchieved(); }
+        if (withdrawCeil < amount) {
+            revert WithdrawCeilingAchieved();
+        }
 
         withdrawCeil -= amount;
-        
+
         // burn gSGX
         _burn(msg.sender, share);
 

@@ -12,7 +12,6 @@ error Paused();
 /// @notice This is the offical token of the Subgenix network.
 /// @dev optimized implementation of the ERC20 token standard from solmate.
 contract Subgenix is ERC20, Ownable {
-
     /// @notice Emitted only when a manager is added or removed from the `managers` mapping.
     /// @param user address, Contract/User to be added/removed from the managers mapping.
     /// @param value bool, true to add permission, false to remove permission.
@@ -25,24 +24,23 @@ contract Subgenix is ERC20, Ownable {
 
     /// @notice Indicates if transactions are allowed or not.
     bool public paused;
-    
+
     // <--------------------------------------------------------> //
     // <---------------------- CONSTRUCTOR ---------------------> //
-    // <--------------------------------------------------------> // 
+    // <--------------------------------------------------------> //
 
     constructor(
         string memory _name,
         string memory _symbol,
         uint8 _decimals
     ) ERC20(_name, _symbol, _decimals) {
-        
         // Mint inital supply
         _mint(msg.sender, 6_000_000e18);
     }
 
     // <--------------------------------------------------------> //
     // <--------------------- ERC20  LOGIC ---------------------> //
-    // <--------------------------------------------------------> // 
+    // <--------------------------------------------------------> //
 
     /// @notice Implementation of the mint function from the ERC20.
     /// @dev See {ERC20 _mint}. Only managers can call it.
@@ -50,7 +48,7 @@ contract Subgenix is ERC20, Ownable {
         if (!managers[msg.sender]) revert Unauthorized();
         _mint(to, amount);
     }
-    
+
     /// @notice Implementation of the burn function from the ERC20.
     /// @dev See {ERC20 _burn}.
     function burn(uint256 amount) external {
@@ -62,17 +60,26 @@ contract Subgenix is ERC20, Ownable {
     ///         `from` must approve caller to burn at least the `amount`.
     function burnFrom(address from, uint256 amount) external {
         uint256 allowed = allowance[from][msg.sender];
-        if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amount;
+        if (allowed != type(uint256).max)
+            allowance[from][msg.sender] = allowed - amount;
         _burn(from, amount);
     }
 
-    function transfer(address to, uint256 amount) public override returns (bool) {
+    function transfer(address to, uint256 amount)
+        public
+        override
+        returns (bool)
+    {
         if (paused && !managers[msg.sender]) revert Paused();
-        
+
         return super.transfer(to, amount);
     }
 
-    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) public override returns (bool) {
         if (paused && !managers[msg.sender]) revert Paused();
 
         return super.transferFrom(from, to, amount);
@@ -80,9 +87,9 @@ contract Subgenix is ERC20, Ownable {
 
     // <--------------------------------------------------------> //
     // <------------------- ONLY OWNER LOGIC -------------------> //
-    // <--------------------------------------------------------> // 
+    // <--------------------------------------------------------> //
 
-    /// @notice Add/remove an address from having access to functions with 
+    /// @notice Add/remove an address from having access to functions with
     ///         the `onlyManagers` modifier.
     /// @param user address, Contract/User to be added/removed from the managers mapping.
     /// @param action bool, true to add permission, false to remove permission.
