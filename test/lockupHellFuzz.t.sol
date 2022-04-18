@@ -44,8 +44,6 @@ contract LockUpHellTest is DSTestPlus {
 
         lockup.setLongPercentage(18e16);   // Percentage to be locked up for 18 days, 18e16 = 18%.
         lockup.setShortPercentage(12e16);  // Percentage to be locked up for 07 days, 12e16 = 12%.
-        lockup.setLongLockupTime(18 days); // 18 days in seconds
-        lockup.setShortLockupTime(7 days); // 07 days in seconds
         lockup.setVaultFactory(address(vault));
 
         vault.setInterestRate(1e16);        // Daily rewards, 1e16 = 1%
@@ -99,9 +97,9 @@ contract LockUpHellTest is DSTestPlus {
         // Assert User has not colected shortRewards yet.
         assertTrue(!userLockup.shortRewardsCollected);
         // Assert longLockupUnlockDate is equal to what we set it to be.
-        assertEq(userLockup.longLockupUnlockDate, lockup.getLongLockupTime());
+        assertEq(userLockup.longLockupUnlockDate, lockup.longLockupTime());
         // Assert shortLockupUnlockDate is equal to what we set it to be.
-        assertEq(userLockup.shortLockupUnlockDate, lockup.getShortLockupTime());
+        assertEq(userLockup.shortLockupUnlockDate, lockup.shortLockupTime());
         // Assert shortRewards are equal to what we set it to be.
         assertEq(userLockup.shortRewards, shortRewards);
         // Assert longtRewards are equal to what we set it to be.
@@ -201,16 +199,6 @@ contract LockUpHellTest is DSTestPlus {
     // <---------------- TEST SET FUNCTIONS ----------------> //
     // <----------------------------------------------------> //
 
-    function testSetLongLockupTime(uint32 time) public {
-        lockup.setLongLockupTime(time);
-        assertEq(lockup.getLongLockupTime(), time);
-    }
-
-    function testSetShortLockupTime(uint32 time) public {
-        lockup.setShortLockupTime(time);
-        assertEq(lockup.getShortLockupTime(), time);
-    }
-
     function testSetLongPercentage(uint256 time) public {
         lockup.setLongPercentage(time);
         assertEq(lockup.getLongPercentage(), time);
@@ -271,7 +259,7 @@ contract LockUpHellTest is DSTestPlus {
         uint256 longRewards
         ) public {
         
-        hevm.assume(time < lockup.getShortLockupTime());
+        hevm.assume(time < lockup.shortLockupTime());
 
         sgx.approve(address(lockup), 10e18);
         
@@ -305,7 +293,7 @@ contract LockUpHellTest is DSTestPlus {
         uint256 longRewards
         ) public {
 
-        hevm.assume(time < lockup.getLongLockupTime());
+        hevm.assume(time < lockup.longLockupTime());
 
         sgx.approve(address(lockup), 10e18);        
         lockup.lockupRewards(msg.sender, shortRewards, longRewards);

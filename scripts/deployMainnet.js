@@ -66,19 +66,11 @@ async function main() {
     await (await lockup.setLongPercentage(ethers.utils.parseUnits("18", 16))).wait();  // 18e16 = 18%
     await (await lockup.setShortPercentage(ethers.utils.parseUnits("12", 16))).wait(); // 12e16 = 12%
 
-
     console.log("   set gSGX withdraw Ceil...");
     await (await gSGX.setWithdrawCeil(ethers.utils.parseEther("10000"))).wait(); // 10,000 SGX
 
-
-    console.log("   set lockupTime..");
-    await (await lockup.setLongLockupTime(1296000)).wait(); // 15 days in seconds
-    await (await lockup.setShortLockupTime(604800)).wait(); // 07 days in seconds
-
-
     console.log("   set vaultFactory contract..");
     await (await lockup.setVaultFactory(vault.address)).wait();
-
 
     console.log("   set vault variables..");
     await (await vault.setInterestRate(ethers.utils.parseUnits("7", 18))).wait();      // 07e18 = 700%

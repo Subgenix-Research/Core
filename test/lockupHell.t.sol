@@ -47,8 +47,6 @@ contract LockUpHellTest is DSTestPlus {
 
         lockup.setLongPercentage(18e16);   // Percentage to be locked up for 18 days, 18e16 = 18%.
         lockup.setShortPercentage(12e16);  // Percentage to be locked up for 07 days, 12e16 = 12%.
-        lockup.setLongLockupTime(18 days); // 18 days in seconds
-        lockup.setShortLockupTime(7 days); // 07 days in seconds
         lockup.setVaultFactory(address(vault));
 
         vault.setInterestRate(1e16);        // Daily rewards, 1e16 = 1%
@@ -105,9 +103,9 @@ contract LockUpHellTest is DSTestPlus {
         // Assert User has not colected shortRewards yet.
         assertTrue(!userLockup.shortRewardsCollected);
         // Assert longLockupUnlockDate is equal to what we set it to be.
-        assertEq(userLockup.longLockupUnlockDate, lockup.getLongLockupTime());
+        assertEq(userLockup.longLockupUnlockDate, lockup.longLockupTime());
         // Assert shortLockupUnlockDate is equal to what we set it to be.
-        assertEq(userLockup.shortLockupUnlockDate, lockup.getShortLockupTime());
+        assertEq(userLockup.shortLockupUnlockDate, lockup.shortLockupTime());
         // Assert shortRewards are equal to what we set it to be.
         assertEq(userLockup.shortRewards, shortRewards);
         // Assert longtRewards are equal to what we set it to be.
@@ -204,11 +202,11 @@ contract LockUpHellTest is DSTestPlus {
     // <---------------- TEST VEW FUNCTIONS ----------------> //
     // <----------------------------------------------------> //
     function testGetLongLockupTime() public {
-        assertEq(lockup.getLongLockupTime(), 18 days);
+        assertEq(lockup.longLockupTime(), 18 days);
     }
 
     function testGetShortLockupTime() public {
-        assertEq(lockup.getShortLockupTime(), 7 days);
+        assertEq(lockup.shortLockupTime(), 7 days);
     }
 
     function testGetLongPercentage() public {
@@ -222,16 +220,6 @@ contract LockUpHellTest is DSTestPlus {
     // <----------------------------------------------------> //
     // <---------------- TEST SET FUNCTIONS ----------------> //
     // <----------------------------------------------------> //
-
-    function testSetLongLockupTime() public {
-        lockup.setLongLockupTime(12 days);
-        assertEq(lockup.getLongLockupTime(), 12 days);
-    }
-
-    function testSetShortLockupTime() public {
-        lockup.setShortLockupTime(10 days);
-        assertEq(lockup.getShortLockupTime(), 10 days);
-    }
 
     function testSetLongPercentage() public {
         lockup.setLongPercentage(12e16);

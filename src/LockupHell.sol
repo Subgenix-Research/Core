@@ -5,10 +5,10 @@ import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Isgx} from "./interfaces/Isgx.sol";
 
+error TooEarlyToClaim();
+error AlreadyClaimed();
 error Unauthorized();
 error IndexInvalid();
-error AlreadyClaimed();
-error TooEarlyToClaim();
 error TransferFrom();
 error Transfer();
 
@@ -41,14 +41,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
     /// @param longRewards uint256, amount of rewards unlocked.
     event UnlockLongLockup(address indexed user, uint256 longRewards);
 
-    /// @notice Emitted when the owner of the contrct changes the shorter lockup time period.
-    /// @param value uint32, the new value of the shorter lockup time period.
-    event ShortLockupTimeChanged(uint32 value);
-
-    /// @notice Emitted when the owner of the contrct changes the longer lockup time period.
-    /// @param value uint32, the new value of the longer lockup time period.
-    event LongLockupTimeChanged(uint32 value);
-
     /// @notice Emitted when the owner of the contract changes the % of the rewards that are
     ///         going to be locked up for a shorter period of time.
     /// @param percentage uint256, the new percentage (in thousands) of rewards that will be
@@ -71,8 +63,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
 
     /// @notice Global rates defined by the owner of the contract.
     struct Rates {
-        uint32 shortLockupTime; // Shorter lockup period in seconds, i.e 07 days.
-        uint32 longLockupTime; // Longer lockup period in seconds, i.e 15 days.
         uint256 shortPercentage; // % of rewards locked up with a shorter period, defined in thousands i.e 18e16 = 18%.
         uint256 longPercentage; // % of rewards locked up with a longer period, defined in thousands i.e. 12e16 = 12%.
     }
@@ -112,6 +102,9 @@ contract LockupHell is Ownable, ReentrancyGuard {
 
     // Global rates.
     Rates public rates;
+
+    uint32 public shortLockupTime = 7 days; // Shorter lockup period.
+    uint32 public longLockupTime = 18 days; // Longer lockup period.
 
     constructor(address sgxAddress) {
         sgx = sgxAddress;
@@ -156,10 +149,8 @@ contract LockupHell is Ownable, ReentrancyGuard {
         usersLockup[user][index] = Lockup({
             longRewardsCollected: false,
             shortRewardsCollected: false,
-            longLockupUnlockDate: uint32(block.timestamp) +
-                rates.longLockupTime,
-            shortLockupUnlockDate: uint32(block.timestamp) +
-                rates.shortLockupTime,
+            longLockupUnlockDate: uint32(block.timestamp) + longLockupTime,
+            shortLockupUnlockDate: uint32(block.timestamp) + shortLockupTime,
             longRewards: longLockupRewards,
             shortRewards: shortLockupRewards
         });
@@ -259,18 +250,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
     // <-------------------- VIEW FUNCTIONS --------------------> //
     // <--------------------------------------------------------> //
 
-    /// @notice Allow the user to check how long `shortLockupTime` is set to.
-    /// @return uint32, the value `shortLockupTime` is set to.
-    function getShortLockupTime() external view returns (uint256) {
-        return rates.shortLockupTime;
-    }
-
-    /// @notice Allow the user to check how long `longLockupTime` is set to.
-    /// @return uint32, the value `longLockupTime` is set to.
-    function getLongLockupTime() external view returns (uint256) {
-        return rates.longLockupTime;
-    }
-
     /// @notice Allow the user to know what the `shortPercentage` variable is set to.
     /// @return uint32, the value the `shortPercentage` variable is set to in thousands i.e. 1200 = 12%.
     function getShortPercentage() external view returns (uint256) {
@@ -286,22 +265,6 @@ contract LockupHell is Ownable, ReentrancyGuard {
     // <--------------------------------------------------------> //
     // <---------------------- ONLY OWNER ----------------------> //
     // <--------------------------------------------------------> //
-
-    /// @notice Allows the owner of the contract to change the shorter lockup period all
-    ///         users rewards are going to be locked up to.
-    /// @dev Allows the owner of the contract to change the `shortLockupTime` value.
-    function setShortLockupTime(uint32 value) external onlyOwner {
-        rates.shortLockupTime = value;
-        emit ShortLockupTimeChanged(value);
-    }
-
-    /// @notice Allows the owner of the contract to change the longer lockup period all
-    ///         users rewards are going to be locked up to.
-    /// @dev Allows the owner of the contract to change the `longLockupTime` value.
-    function setLongLockupTime(uint32 value) external onlyOwner {
-        rates.longLockupTime = value;
-        emit LongLockupTimeChanged(value);
-    }
 
     /// @notice Allows the owner of the contract change the % of the rewards that are
     ///         going to be locked up for a short period of time.

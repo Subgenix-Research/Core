@@ -3,21 +3,21 @@ pragma solidity 0.8.4;
 
 import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Isgx} from "./interfaces/Isgx.sol";
 import {IJoeRouter02} from "./interfaces/IJoeRouter02.sol";
 import {ILockupHell} from "./interfaces/ILockupHell.sol";
 import {IgSGX} from "./interfaces/IgSGX.sol";
+import {Isgx} from "./interfaces/Isgx.sol";
 
-error Unauthorized();
-error AlreadyHasVault();
-error DoenstHaveVault();
-error TokenNotAccepted();
 error CircuitBreakerActivated();
 error joeRouterExcessiveInput();
 error CannotBeZeroAddress();
-error BoostTooSmall();
+error TokenNotAccepted();
+error AlreadyHasVault();
+error DoenstHaveVault();
 error TooEarlyToClaim();
 error AmountTooSmall();
+error BoostTooSmall();
+error Unauthorized();
 error AmountTooBig();
 error TransferFrom();
 error Transfer();
