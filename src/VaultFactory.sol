@@ -9,7 +9,6 @@ import {IgSGX} from "./interfaces/IgSGX.sol";
 import {Isgx} from "./interfaces/Isgx.sol";
 
 error CircuitBreakerActivated();
-error joeRouterExcessiveInput();
 error CannotBeZeroAddress();
 error TokenNotAccepted();
 error AlreadyHasVault();
@@ -609,7 +608,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             treasury,
             block.timestamp
         );
-        if (amounts[0] > 0) revert joeRouterExcessiveInput();
+        require(amounts[0] > 0, "joeRouterExcessiveInput");
         amounts = joeRouter.swapExactTokensForAVAX(
             toResearch,
             0,
@@ -617,7 +616,7 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             research,
             block.timestamp
         );
-        if (amounts[0] > 0) revert joeRouterExcessiveInput();
+        require(amounts[0] > 0, "joeRouterExcessiveInput");
     }
 
     // <--------------------------------------------------------> //

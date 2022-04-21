@@ -5,6 +5,7 @@ import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Isgx} from "./interfaces/Isgx.sol";
 
+error CannotBeZeroAddress();
 error TooEarlyToClaim();
 error AlreadyClaimed();
 error Unauthorized();
@@ -104,9 +105,11 @@ contract LockupHell is Ownable, ReentrancyGuard {
     Rates public rates;
 
     uint32 public shortLockupTime = 7 days; // Shorter lockup period.
-    uint32 public longLockupTime = 18 days; // Longer lockup period.
+    uint32 public longLockupTime = 14 days; // Longer lockup period.
 
     constructor(address sgxAddress) {
+        if (sgxAddress == address(0)) revert CannotBeZeroAddress();
+
         sgx = sgxAddress;
     }
 

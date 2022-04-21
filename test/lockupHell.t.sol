@@ -202,7 +202,7 @@ contract LockUpHellTest is DSTestPlus {
     // <---------------- TEST VEW FUNCTIONS ----------------> //
     // <----------------------------------------------------> //
     function testGetLongLockupTime() public {
-        assertEq(lockup.longLockupTime(), 18 days);
+        assertEq(lockup.longLockupTime(), 14 days);
     }
 
     function testGetShortLockupTime() public {
