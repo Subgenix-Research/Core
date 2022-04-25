@@ -12,9 +12,9 @@ async function main() {
 
     const owner = new ethers.Wallet(process.env.privateKey, provider);
 
-    const treasury = "0x0000000000000000000000000000000000000001"; 
-    const research = "0x0000000000000000000000000000000000000001";
-    const wavax = "0xfee34F9C22Bb731B187b6f09D21E4Fb07b2612f7"; // Testnet
+    const treasury = ""; 
+    const research = "";
+    const wavax = "";
 
     console.log("Owner:", owner.address);
 
@@ -62,37 +62,75 @@ async function main() {
 
     console.log("All contracts deployed! Starting setup...");
 
-    console.log("   set percentages..");
+    process.stdout.write("   set long percentages..  ");
     await (await lockup.setLongPercentage(ethers.utils.parseUnits("18", 16))).wait();  // 18e16 = 18%
+    process.stdout.write("done!\n".green);
+    process.stdout.write("   set short percentages..  ");
     await (await lockup.setShortPercentage(ethers.utils.parseUnits("12", 16))).wait(); // 12e16 = 12%
+    process.stdout.write("done!\n".green);
 
-    console.log("   set gSGX withdraw Ceil...");
+    process.stdout.write("   set gSGX withdraw Ceil..  ");
     await (await gSGX.setWithdrawCeil(ethers.utils.parseEther("10000"))).wait(); // 10,000 SGX
+    process.stdout.write("done!\n".green);
 
-    console.log("   set vaultFactory contract..");
+    process.stdout.write("   set vaultFactory contract..  ");
     await (await lockup.setVaultFactory(vault.address)).wait();
+    process.stdout.write("done!\n".green);
 
-    console.log("   set vault variables..");
+    process.stdout.write("   set Interest rate..  ");
     await (await vault.setInterestRate(ethers.utils.parseUnits("7", 18))).wait();      // 07e18 = 700%
-    await (await vault.setBurnPercent(ethers.utils.parseUnits("2", 16))).wait();       // 02e16 = 02%
-    await (await vault.setgSGXPercent(ethers.utils.parseUnits("13", 16))).wait();      // 13e16 = 13%
-    await (await vault.setgSGXDistributed(ethers.utils.parseUnits("5", 16))).wait();   // 05e16 = 05%
-    await (await vault.setMinVaultDeposit(ethers.utils.parseUnits("500", 18))).wait(); // 500e18 = 500 SGX
-    await (await vault.setNetworkBoost(ethers.utils.parseUnits("16", 17))).wait();     // 1.6x
-    await (await vault.setLiquidateVaultPercent(ethers.utils.parseUnits("15", 16))).wait(); // 15%
-    await (await vault.setRewardsWaitTime(86400)).wait(); // 1 day in seconds
+    process.stdout.write("done!\n".green);
 
-    console.log("   set league amounts..");
+    process.stdout.write("   set Burn Percent..  ");
+    await (await vault.setBurnPercent(ethers.utils.parseUnits("2", 16))).wait();       // 02e16 = 02%
+    process.stdout.write("done!\n".green);
+
+    process.stdout.write("   set gSGX Percent..  ");
+    await (await vault.setgSGXPercent(ethers.utils.parseUnits("13", 16))).wait();      // 13e16 = 13%
+    process.stdout.write("done!\n".green);
+
+    process.stdout.write("   set gSGX Distributed..  ");
+    await (await vault.setgSGXDistributed(ethers.utils.parseUnits("5", 16))).wait();   // 05e16 = 05%
+    process.stdout.write("done!\n".green);
+
+    process.stdout.write("   set min vault deposit..  ");
+    await (await vault.setMinVaultDeposit(ethers.utils.parseUnits("500", 18))).wait(); // 500e18 = 500 SGX
+    process.stdout.write("done!\n".green);
+
+    process.stdout.write("   set network boost..  ");
+    await (await vault.setNetworkBoost(ethers.utils.parseUnits("16", 17))).wait();     // 1.6x
+    process.stdout.write("done!\n".green);
+
+    process.stdout.write("   set liquidate Vault Percent..  ");
+    await (await vault.setLiquidateVaultPercent(ethers.utils.parseUnits("15", 16))).wait(); // 15%
+    process.stdout.write("done!\n".green);
+
+    process.stdout.write("   set rewards wait time..  ");
+    await (await vault.setRewardsWaitTime(86400)).wait(); // 1 day in seconds
+    process.stdout.write("done!\n".green);
+
+    process.stdout.write("   set deposit swap Percentage..  ");
+    await (await vault.setDepositSwapPercentage(ethers.utils.parseUnits("33", 16))); // 33e16 = 33%
+    process.stdout.write("done!\n".green);
+
+    process.stdout.write("   set create swap Percentage..  ");
+    await (await vault.setCreateSwapPercentage(ethers.utils.parseUnits("66", 16)));  // 66e16 = 66%
+    process.stdout.write("done!\n".green);
+
+    process.stdout.write("   set league amounts..  ");
     await (await vault.setLeagueAmount(0, ethers.utils.parseUnits("2000", 18))).wait();
     await (await vault.setLeagueAmount(1, ethers.utils.parseUnits("5000", 18))).wait();
     await (await vault.setLeagueAmount(2, ethers.utils.parseUnits("20000", 18))).wait();
     await (await vault.setLeagueAmount(3, ethers.utils.parseUnits("100000", 18))).wait();
+    process.stdout.write("done!\n".green);
 
-    console.log("   set token manager..");
+    process.stdout.write("   set token manager..  ");
     await (await SGX.setManager(vault.address, true)).wait();
+    process.stdout.write("done!\n".green);
 
-    console.log("   add accepted tokens..");
+    process.stdout.write("   add accepted tokens..");
     await (await vault.setAcceptedTokens(wavax, true)).wait();
+    process.stdout.write("done!\n".green);
 
     console.log("All done!".green);
 }
