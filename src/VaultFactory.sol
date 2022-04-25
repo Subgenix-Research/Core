@@ -163,6 +163,14 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     /// @param allow bool, the new treasurySwap.
     event TreasurySwapUpdated(bool allow);
 
+    /// @notice Emitted when the deposit swap Percentage is updated.
+    /// @param percentage uint256, the new percentage.
+    event DepositSwapPercentageUpdated(uint256 percentage);
+
+    /// @notice Emitted when the create swap Percentage is updated.
+    /// @param percentage uint256, the new percentage.
+    event CreateSwapPercentageUpdated(uint256 percentage);
+
     /// @notice Emitted when the circuit breaker is activated.
     /// @param stop bool, true if activated, false otherwise.
     event CircuitBreakerUpdated(bool stop);
@@ -199,6 +207,12 @@ contract VaultFactory is Ownable, ReentrancyGuard {
 
     /// @notice Used to boost users SGX.
     uint256 public networkBoost;
+
+    /// @notice Amount to swap for AVAX when depositing.
+    uint256 public depositSwapPercentage;
+
+    /// @notice Amount to swap for AVAX when creating a vault.
+    uint256 public createSwapPercentage;
 
     /// @notice True when on Liquidity Accumulation Phase.
     bool internal liquidityAccumulationPhase;
@@ -271,6 +285,20 @@ contract VaultFactory is Ownable, ReentrancyGuard {
     function setTreasurySwap(bool allow) external onlyOwner {
         internalConfigs.allowTreasurySwap = allow;
         emit TreasurySwapUpdated(allow);
+    }
+
+    /// @notice Update the deposit swap percentage when depositing in the vault.
+    /// @param percentage uint256, new swap percentage.
+    function setDepositSwapPercentage(uint256 percentage) external onlyOwner {
+        depositSwapPercentage = percentage;
+        emit DepositSwapPercentageUpdated(percentage);
+    }
+
+    /// @notice Update the deposit swap percentage when creating a vault.
+    /// @param percentage uint256, new swap percentage.
+    function setCreateSwapPercentage(uint256 percentage) external onlyOwner {
+        createSwapPercentage = percentage;
+        emit CreateSwapPercentageUpdated(percentage);
     }
 
     /// @notice Used to pause specific contract functions.
@@ -350,8 +378,8 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             uint256 result = amount;
 
             if (internalConfigs.allowTreasurySwap) {
-                // Swaps 66% of the amount deposit to AVAX.
-                uint256 swapAmount = mulDivDown(amount, 66e16, SCALE);
+                // Swaps the amount deposited to AVAX.
+                uint256 swapAmount = mulDivDown(amount, createSwapPercentage, SCALE);
                 swapSGXforAVAX(swapAmount);
                 result -= swapAmount;
             }
@@ -423,8 +451,8 @@ contract VaultFactory is Ownable, ReentrancyGuard {
             uint256 result = amount;
 
             if (internalConfigs.allowTreasurySwap) {
-                // Swaps 66% of the amount deposit to AVAX.
-                uint256 swapAmount = mulDivDown(amount, 66e16, SCALE);
+                // Swaps the amount deposited to AVAX.
+                uint256 swapAmount = mulDivDown(amount, depositSwapPercentage, SCALE);
                 swapSGXforAVAX(swapAmount);
                 result -= swapAmount;
             }

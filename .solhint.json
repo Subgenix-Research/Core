@@ -4,6 +4,6 @@
     "compiler-version": ["error", "^0.8.4"],
     "func-visibility": ["warn",{"ignoreConstructors":true}],
     "not-rely-on-time": "off",
-    "max-states-count": ["warn",18]
+    "max-states-count": ["warn",20]
   }
 }

@@ -1,7 +1,7 @@
 [default]
 
-# Increase optimizer_runs
-optimizer_runs = 100_000
+# optimizer_runs
+optimizer_runs = 200
 
 
 

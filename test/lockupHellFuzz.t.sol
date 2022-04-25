@@ -53,6 +53,8 @@ contract LockUpHellTest is DSTestPlus {
         vault.setMinVaultDeposit(1e18);     // Minimum amount required to deposite in Vault.
         vault.setNetworkBoost(1e18);        // SGX booster.
         vault.setRewardsWaitTime(24 hours); // rewards wait time.
+        vault.setDepositSwapPercentage(33e16);         // 33% swap when depositing in the vault.
+        vault.setCreateSwapPercentage(66e16);          // 66% swap when creating a vault.
 
         sgx.setManager(address(vault), true);
 

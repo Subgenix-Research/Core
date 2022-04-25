@@ -54,6 +54,8 @@ contract VaultFactoryTest is DSTestPlus {
         vault.setLiquidateVaultPercent(15e16);         // 15% of the vault back to the user.
         vault.setAcceptedTokens(address(sgx), true);   // Add sgx to the accepted tokens
         vault.setAcceptedTokens(address(wavax), true); // Add wavax to the accepted tokens
+        vault.setDepositSwapPercentage(33e16);         // 33% swap when depositing in the vault.
+        vault.setCreateSwapPercentage(66e16);          // 66% swap when creating a vault.
 
 
         sgx.setManager(address(vault), true);
