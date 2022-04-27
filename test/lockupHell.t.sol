@@ -7,7 +7,7 @@ import {Subgenix} from "../src/Subgenix.sol";
 import {VaultFactory} from "../src/VaultFactory.sol";
 import {LockupHell} from "../src/lockupHell.sol";
 import {GovernanceSGX} from "../src/Governancesgx.sol";
-import {MockWAVAX} from "./utils/mocks/MockWAVAX.sol";
+import {MockWAVAX} from "../src/mocks/mockWAVAX.sol";
 
 contract LockUpHellTest is DSTestPlus {
     VaultFactory internal vault;

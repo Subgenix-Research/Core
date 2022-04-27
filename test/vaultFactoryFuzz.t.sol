@@ -7,7 +7,7 @@ import {Subgenix} from "../src/Subgenix.sol";
 import {VaultFactory} from "../src/VaultFactory.sol";
 import {LockupHell} from "../src/lockupHell.sol";
 import {GovernanceSGX} from "../src/Governancesgx.sol";
-import {MockWAVAX} from "./utils/mocks/MockWAVAX.sol";
+import {MockWAVAX} from "../src/mocks/mockWAVAX.sol";
 import {Helper} from "./utils/Helper.sol";
 
 
@@ -35,7 +35,7 @@ contract VaultFactoryTest is DSTestPlus {
         gSGX = new GovernanceSGX(address(sgx));
         
         vault = new VaultFactory(
-            address(wavax),    // Wrapped wavax.
+            address(wavax),    // Wrapped avax.
             address(sgx),      // Underlying token.
             address(gSGX),     // Governance token
             treasury,          // treasury address.
