@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.4;
 
-import {ReentrancyGuard} from "@solmate/src/utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@rari-capital/solmate/src/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Isgx} from "./interfaces/Isgx.sol";
 

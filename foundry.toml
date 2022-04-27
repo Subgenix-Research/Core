@@ -4,7 +4,7 @@ solc = "0.8.4"
 
 # A list of remappings
 remappings = [
-    "@solmate/=lib/solmate/",
+    "@rari-capital/solmate/src=lib/solmate/src",
     "@openzeppelin/=lib/openzeppelin-contracts/",
     "ds-test/=lib/ds-test/src/"
 ]

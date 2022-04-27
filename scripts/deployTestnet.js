@@ -1,26 +1,18 @@
-const { ethers } = require("ethers");
 require("colors");
-require('dotenv').config()
-const SubgenixJson = require("../out/Subgenix.sol/Subgenix.json");
-const GovernanceSGXJson = require("../out/GovernanceSGX.sol/GovernanceSGX.json");
-const LockupHellJson = require("../out/LockupHell.sol/LockupHell.json");
-const VaultFactoryJson = require("../out/VaultFactory.sol/VaultFactory.json");
 
 async function main() {
-
-    const provider = new ethers.providers.JsonRpcProvider("https://api.avax-test.network/ext/bc/C/rpc");
-
-    const owner = new ethers.Wallet(process.env.privateKey, provider);
 
     const treasury = "0x0000000000000000000000000000000000000001"; 
     const research = "0x0000000000000000000000000000000000000001";
     const wavax = "0xc06EA0cB83749c84424526f97Ab3cc1a1353A910"; // Testnet
 
+    const [owner] = await ethers.getSigners();
+
     console.log("Owner:", owner.address);
 
     console.log("Start contracts deployment...");
 
-    const Subgenix = new ethers.ContractFactory(SubgenixJson.abi, SubgenixJson.bytecode, owner);
+    const Subgenix = await ethers.getContractFactory("Subgenix");
     const SGX = await Subgenix.deploy(
         "Subgenix Token",
         "SGX",
@@ -30,21 +22,21 @@ async function main() {
 
     console.log("✓".green + " SGX deployed to:", SGX.address);
 
-    const LockupHell = new ethers.ContractFactory(LockupHellJson.abi, LockupHellJson.bytecode, owner);
+    const LockupHell = await ethers.getContractFactory("LockupHell");
     const lockup = await LockupHell.deploy(SGX.address);
     await lockup.deployed();
     
     console.log("✓".green + " lockupHell deployed to:", lockup.address);
 
 
-    const GovernanceSGX = new ethers.ContractFactory(GovernanceSGXJson.abi, GovernanceSGXJson.bytecode, owner);
+    const GovernanceSGX = await ethers.getContractFactory("GovernanceSGX");
     const gSGX = await GovernanceSGX.deploy(SGX.address);
     await gSGX.deployed();
     
     console.log("✓".green + " GovernanceSGX deployed to:", gSGX.address);
-    
-    
-    const VaultFactory = new ethers.ContractFactory(VaultFactoryJson.abi, VaultFactoryJson.bytecode, owner);
+   
+
+    const VaultFactory = await ethers.getContractFactory("VaultFactory");
     const vault = await VaultFactory.deploy(
         wavax,
         SGX.address,

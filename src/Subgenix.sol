@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ERC20} from "@solmate/src/tokens/ERC20.sol";
+import {ERC20} from "@rari-capital/solmate/src/tokens/ERC20.sol";
 
 error Unauthorized();
 error Paused();
