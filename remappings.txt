@@ -1,3 +1,0 @@
-@solmate/=lib/solmate/
-@openzeppelin/=lib/openzeppelin-contracts/
-ds-test/=lib/ds-test/src/
