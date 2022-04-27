@@ -23,7 +23,6 @@ VaultFactory  — "The vaultFactory where users vaults are created & managed."
 To install all dependencies follow the next steps (you need to have foundry and hardhat installed):    
 1. Clone and `cd` into this repo: `git clone https://github.com/Subgenix-Research/Core.git && cd Core/`   
 2. Install all dependencies used with hardhat: `npm install`
-3. Install all dependencies used with Foundry: `forge install`
 
 To compile all our contracts with foundry use the following command: `make build`  
 To run all our tests use the following command: `forge test`   
