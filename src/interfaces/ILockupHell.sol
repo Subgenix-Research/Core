@@ -2,10 +2,9 @@
 pragma solidity 0.8.4;
 
 interface ILockupHell {
-    
     function lockupRewards(
-        address user, 
-        uint256 shortLockupRewards, 
+        address user,
+        uint256 shortLockupRewards,
         uint256 longLockupRewards
     ) external;
 
@@ -13,11 +12,11 @@ interface ILockupHell {
 
     function claimLongLockup(address user, uint32 index) external;
 
-    function getShortLockupTime() external view returns(uint32);
+    function getShortLockupTime() external view returns (uint32);
 
-    function getLongLockupTime() external view returns(uint32);
+    function getLongLockupTime() external view returns (uint32);
 
-    function getShortPercentage() external view returns(uint256);
- 
-    function getLongPercentage() external view returns(uint256);
+    function getShortPercentage() external view returns (uint256);
+
+    function getLongPercentage() external view returns (uint256);
 }

@@ -28,24 +28,11 @@ To install all dependencies follow the next steps (you need to have foundry and 
 To compile all our contracts with foundry use the following command: `make build`  
 To run all our tests use the following command: `forge test`   
 
-## Security:
-
-To run the Slither you will need to first create a python environment:
-
-1. Install [Python](https://www.python.org/downloads/).
-2. In this directory, create a python environment: `python3 -m venv env`.
-3. Start the environment: `source env/bin/activate`.
-4. Install all requirements: `pip install -r requirements.txt`.
-
-You are ready to go!
-
-[Slither](https://github.com/crytic/slither) was used as a static analyzer to
-search for vulnerabilities in the contract. You can use it on your clone repo using 
-the command `slither .`.
-
 [Solhint](https://github.com/protofire/solhint) was used as a tool for Security 
 and Style Guide validations. You can use it on your clone repo using the command 
-`solhint 'contracts/*.sol'`.
+`solhint 'src/*.sol'`.   
+    
+To run the linter: `npm run lint`.   
 
 
 ## Deployment:
@@ -53,9 +40,11 @@ and Style Guide validations. You can use it on your clone repo using the command
 Make sure that you have the private key from the deployer address in a `.env` file.
 Follow the example from the [.env.example](.env.example) file.
 
+To simulate deployment mocking the mainnet:
+`npx hardhat run scripts/deployTestnet.js`.
 
 To deploy the contracts in the testnet you can run the command:   
-`node scripts/deployTestnet.js`.
+`npx hardhat run scripts/deployTestnet.js --network testnet`.
 
-To deploy the contracts in the mainnet you can run the command:   
-`node scripts/deployMainnet.js`.
+To deploy the contracts in the mainnet you can run the command:  
+`npx hardhat run scripts/deployMainnet.js --network mainnet`.

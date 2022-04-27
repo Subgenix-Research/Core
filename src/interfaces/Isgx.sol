@@ -5,7 +5,6 @@ pragma solidity 0.8.4;
  * @dev Interface of the ERC20 standard with mint and burn functions.
  */
 interface Isgx {
-
     /**
      * @dev Moves `amount` tokens from the caller's account to `to`.
      *
@@ -73,7 +72,6 @@ interface Isgx {
      */
     function burnFrom(address from, uint256 amount) external;
 
-
     /**
      * @dev Emitted when `value` tokens are moved from one account (`from`) to
      * another (`to`).
@@ -86,5 +84,9 @@ interface Isgx {
      * @dev Emitted when the allowance of a `spender` for an `owner` is set by
      * a call to {approve}. `value` is the new allowance.
      */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
 }
