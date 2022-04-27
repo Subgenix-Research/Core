@@ -1,11 +1,7 @@
-const { ethers } = require("ethers");
-require('dotenv').config()
-
 async function main() {
 
-    const provider = new ethers.providers.JsonRpcProvider("https://api.avax-test.network/ext/bc/C/rpc");
+    const [owner] = await ethers.getSigners();
 
-    const owner = new ethers.Wallet(process.env.privateKey, provider);
 }
 
 main()
